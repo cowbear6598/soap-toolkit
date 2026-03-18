@@ -5,8 +5,8 @@
     {
       "name": "soap-dev",
       "source": {
-        "source": "github",
-        "repo": "cowbear6598/soap-dev"
+        "source": "url",
+        "url": "https://github.com/cowbear6598/soap-dev.git"
       }
     }
   ]
