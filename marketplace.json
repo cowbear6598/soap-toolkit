@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    {
+      "name": "soap-dev",
+      "version": "1.0.0",
+      "description": "Full-stack development toolkit with planning, implementation, code review agents, and language-specific skills (Vue, .NET, Go, Node.js). Includes YouTube content tools and custom statusline.",
+      "path": "."
+    }
+  ]
+}
