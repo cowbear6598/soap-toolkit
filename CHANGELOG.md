@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.2] - 2026-03-19
+
+### 新增
+- GitHub Actions release 工作流程
+- release skill 版本號更新步驟
+
 ## [1.0.1] - 2026-03-19
 
 ### 修正
