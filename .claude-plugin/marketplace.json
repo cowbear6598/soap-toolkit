@@ -1,13 +1,10 @@
 {
   "name": "soap-dev",
-  "owner": {
-    "name": "cowbear6598"
-  },
+  "owner": { "name": "cowbear6598" },
   "plugins": [
     {
       "name": "soap-dev",
-      "source": ".",
-      "description": "Full-stack development toolkit with planning, implementation, code review agents, and language-specific skills (Vue, .NET, Go, Node.js)."
+      "source": "."
     }
   ]
 }
