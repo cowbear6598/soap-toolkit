@@ -1,9 +1,5 @@
 {
   "name": "soap-dev",
   "version": "1.0.0",
-  "description": "soap's toolkit",
-  "agents": ["./agents/"],
-  "skills": ["./skills/"],
-  "commands": ["./commands/"],
-  "outputStyles": ["./output-styles/"]
+  "description": "soap's toolkit"
 }
