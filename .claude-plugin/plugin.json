@@ -1,0 +1,25 @@
+{
+  "name": "soap-dev",
+  "version": "1.0.0",
+  "description": "Full-stack development toolkit with planning, implementation, code review agents, and language-specific skills (Vue, .NET, Go, Node.js). Includes YouTube content tools and custom statusline.",
+  "author": {
+    "name": "cowbear6598",
+    "url": "https://github.com/cowbear6598"
+  },
+  "repository": "https://github.com/cowbear6598/Claude-Code",
+  "license": "MIT",
+  "keywords": [
+    "code-review",
+    "planning",
+    "vue",
+    "dotnet",
+    "go",
+    "nodejs",
+    "youtube",
+    "full-stack"
+  ],
+  "agents": "./agents/",
+  "skills": "./skills/",
+  "commands": ["./commands/"],
+  "outputStyles": "./output-styles/"
+}
