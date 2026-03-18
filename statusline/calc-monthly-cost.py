@@ -17,44 +17,26 @@ if now.month == 12:
 else:
     month_end = datetime(now.year, now.month + 1, 1)
 
-# Model pricing table ($/1M tokens)
+# Model pricing table ($/1M tokens) - Claude Code always uses latest version
 MODEL_PRICING = {
-    'opus-4-5': {'input': 5, 'cache_5m': 6.25, 'cache_1h': 10, 'cache_hit': 0.50, 'output': 25},
-    'opus-4-1': {'input': 15, 'cache_5m': 18.75, 'cache_1h': 30, 'cache_hit': 1.50, 'output': 75},
-    'opus-4': {'input': 15, 'cache_5m': 18.75, 'cache_1h': 30, 'cache_hit': 1.50, 'output': 75},
-    'sonnet-4-5': {'input': 3, 'cache_5m': 3.75, 'cache_1h': 6, 'cache_hit': 0.30, 'output': 15},
-    'sonnet-4': {'input': 3, 'cache_5m': 3.75, 'cache_1h': 6, 'cache_hit': 0.30, 'output': 15},
-    'haiku-4-5': {'input': 1, 'cache_5m': 1.25, 'cache_1h': 2, 'cache_hit': 0.10, 'output': 5},
-    'haiku-3-5': {'input': 0.80, 'cache_5m': 1, 'cache_1h': 1.6, 'cache_hit': 0.08, 'output': 4},
-    'haiku-3': {'input': 0.25, 'cache_5m': 0.30, 'cache_1h': 0.50, 'cache_hit': 0.03, 'output': 1.25},
+    'opus':   {'input': 5, 'cache_5m': 6.25, 'cache_1h': 10, 'cache_hit': 0.50, 'output': 25},
+    'sonnet': {'input': 3, 'cache_5m': 3.75, 'cache_1h': 6,  'cache_hit': 0.30, 'output': 15},
+    'haiku':  {'input': 1, 'cache_5m': 1.25, 'cache_1h': 2,  'cache_hit': 0.10, 'output': 5},
 }
 
 def get_model_type(model_name):
     """Extract model type from full model name."""
     if not model_name:
-        return 'sonnet-4-5'  # default
+        return 'sonnet'
 
     model_lower = model_name.lower()
 
-    # Match patterns like claude-opus-4-5-20251101
-    if 'opus-4-5' in model_lower or 'opus-4.5' in model_lower:
-        return 'opus-4-5'
-    elif 'opus-4-1' in model_lower or 'opus-4.1' in model_lower:
-        return 'opus-4-1'
-    elif 'opus-4' in model_lower:
-        return 'opus-4'
-    elif 'sonnet-4-5' in model_lower or 'sonnet-4.5' in model_lower:
-        return 'sonnet-4-5'
-    elif 'sonnet-4' in model_lower:
-        return 'sonnet-4'
-    elif 'haiku-4-5' in model_lower or 'haiku-4.5' in model_lower:
-        return 'haiku-4-5'
-    elif 'haiku-3-5' in model_lower or 'haiku-3.5' in model_lower:
-        return 'haiku-3-5'
-    elif 'haiku-3' in model_lower:
-        return 'haiku-3'
+    if 'opus' in model_lower:
+        return 'opus'
+    elif 'haiku' in model_lower:
+        return 'haiku'
 
-    return 'sonnet-4-5'  # default
+    return 'sonnet'
 
 # Counters for today and month
 today_cost = 0.0
