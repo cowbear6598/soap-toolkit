@@ -1,10 +1,14 @@
 {
-  "name": "soap-dev",
+  "name": "soap-toolkit",
   "owner": { "name": "cowbear6598" },
   "plugins": [
     {
       "name": "soap-dev",
-      "source": "./plugin"
+      "source": "./soap-dev"
+    },
+    {
+      "name": "soap-jira",
+      "source": "./soap-jira"
     }
   ]
 }

@@ -1,4 +1,4 @@
-# soap-dev
+# soap-toolkit
 
 soap's toolkit for Claude Code.
 
@@ -6,8 +6,8 @@ soap's toolkit for Claude Code.
 
 ```bash
 # 1. Add marketplace
-/plugin marketplace add cowbear6598/soap-dev
+/plugin marketplace add cowbear6598/soap-toolkit
 
 # 2. Install plugin
-/plugin install soap-dev
+/plugin install dev-flow
 ```
