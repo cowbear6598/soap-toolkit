@@ -9,6 +9,10 @@
     {
       "name": "soap-jira",
       "source": "./soap-jira"
+    },
+    {
+      "name": "soap-yt",
+      "source": "./soap-yt"
     }
   ]
 }
