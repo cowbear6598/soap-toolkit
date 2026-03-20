@@ -24,19 +24,33 @@ yt-dlp -f "best[height<=720]" --no-playlist -o "資料夾名稱/%(title)s.%(ext)
 yt-dlp --list-subs --no-playlist "YouTube影片網址"
 ```
 
-只看 **Available subtitles** 區（原生字幕）。不下載自動翻譯字幕。
+輸出會分成兩區：
+- **Available subtitles**：原生字幕（作者上傳的）
+- **Available automatic captions**：YouTube AI 自動生成的
 
-## Step 3: 下載原生字幕
+## Step 3: 下載字幕
+
+### 3a: 優先下載原生字幕
 
 依優先順序：**en → 中文（zh, zh-Hant, zh-Hans）→ 其他原生字幕**
 
-從 Step 2 結果中找出有哪些原生字幕，按上述優先順序組合語言碼：
+從 Step 2 的 **Available subtitles** 區找出有哪些原生字幕，按上述優先順序組合語言碼：
 
 ```bash
 yt-dlp --write-sub --sub-lang "語言碼" --sub-format srt --skip-download -o "資料夾名稱/%(title)s.%(ext)s" "YouTube影片網址"
 ```
 
-如果沒有原生字幕，就跳過不下載。
+### 3b: 沒有原生字幕時，fallback 抓自動生成字幕
+
+如果 Step 2 的 **Available subtitles** 區為空（沒有原生字幕），改為下載自動生成的英文字幕。
+
+優先順序：**en-orig → en**
+
+```bash
+yt-dlp --write-auto-sub --sub-lang "en-orig,en" --sub-format srt --skip-download -o "資料夾名稱/%(title)s.%(ext)s" "YouTube影片網址"
+```
+
+下載後告知使用者：「此字幕為 YouTube 自動生成，非原生字幕。」
 
 ## 錯誤處理
 
