@@ -16,7 +16,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("video", help="影片檔案路徑")
     parser.add_argument("--language", default="zh", help="語言代碼 (zh/ja/en)")
-    parser.add_argument("--model", default="small", help="模型大小 (tiny/base/small/medium/large-v3)")
+    parser.add_argument("--model", default="medium", help="模型大小 (tiny/base/small/medium/large-v3)")
     args = parser.parse_args()
 
     model = WhisperModel(args.model, compute_type="int8")
