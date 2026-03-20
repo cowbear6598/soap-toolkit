@@ -13,6 +13,10 @@
     {
       "name": "soap-yt",
       "source": "./soap-yt"
+    },
+    {
+      "name": "soap-chat",
+      "source": "./soap-chat"
     }
   ]
 }
