@@ -1,0 +1,12 @@
+{
+  "bots": {
+    "default": {
+      "token": "xoxb-your-token-here",
+      "name": "Default Bot"
+    },
+    "notify": {
+      "token": "xoxb-another-token",
+      "name": "Notify Bot"
+    }
+  }
+}

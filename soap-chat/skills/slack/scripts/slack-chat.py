@@ -3,9 +3,10 @@
 soap-chat Slack script — 發送訊息、上傳檔案到 Slack 頻道。
 
 Usage:
-  python3 slack-chat.py send --channel CHANNEL --message MESSAGE [--thread-ts TS] [--blocks-json PATH]
-  python3 slack-chat.py upload --channel CHANNEL --file PATH [--message MESSAGE] [--thread-ts TS]
-  python3 slack-chat.py channels
+  python3 slack-chat.py send --channel CHANNEL --message MESSAGE [--bot BOT] [--thread-ts TS] [--blocks-json PATH]
+  python3 slack-chat.py upload --channel CHANNEL --file PATH [--bot BOT] [--message MESSAGE] [--thread-ts TS]
+  python3 slack-chat.py channels [--bot BOT]
+  python3 slack-chat.py bots
 """
 
 import argparse
@@ -18,25 +19,40 @@ import urllib.parse
 import urllib.error
 
 
-def load_token():
-    """從 .env 讀取 SLACK_BOT_TOKEN"""
-    env_path = os.path.join(os.path.dirname(__file__), "..", "..", ".env")
-    env_path = os.path.normpath(env_path)
+def load_config():
+    """從 config.json 讀取所有 bot 設定"""
+    config_path = os.path.join(os.path.dirname(__file__), "..", "..", "config.json")
+    config_path = os.path.normpath(config_path)
 
-    if not os.path.exists(env_path):
-        print(f"錯誤：找不到 .env 檔案（{env_path}）", file=sys.stderr)
+    if not os.path.exists(config_path):
+        print(f"錯誤：找不到 config.json（{config_path}）", file=sys.stderr)
         sys.exit(1)
 
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if line.startswith("SLACK_BOT_TOKEN="):
-                token = line.split("=", 1)[1].strip().strip('"').strip("'")
-                if token and token != "xoxb-your-token-here":
-                    return token
+    with open(config_path) as f:
+        return json.load(f)
 
-    print("錯誤：SLACK_BOT_TOKEN 未設定或仍為預設值，請先編輯 .env", file=sys.stderr)
-    sys.exit(1)
+
+def load_token(bot_name):
+    """從 config.json 讀取指定 bot 的 token"""
+    config = load_config()
+    bots = config.get("bots", {})
+
+    if not bot_name:
+        available = ", ".join(bots.keys())
+        print(f"錯誤：請用 --bot 指定要使用的 bot，可用的 bot：{available}", file=sys.stderr)
+        sys.exit(1)
+
+    if bot_name not in bots:
+        available = ", ".join(bots.keys())
+        print(f"錯誤：找不到 bot「{bot_name}」，可用的 bot：{available}", file=sys.stderr)
+        sys.exit(1)
+
+    token = bots[bot_name].get("token", "")
+    if not token or token == "xoxb-your-token-here":
+        print(f"錯誤：bot「{bot_name}」的 token 未設定，請先編輯 config.json", file=sys.stderr)
+        sys.exit(1)
+
+    return token
 
 
 def slack_api(token, method, data=None, files=None):
@@ -215,15 +231,39 @@ def cmd_upload(token, args):
         sys.exit(1)
 
 
+def cmd_bots():
+    """列出所有已設定的 bot"""
+    config = load_config()
+    bots = config.get("bots", {})
+
+    if not bots:
+        print("沒有設定任何 bot，請編輯 config.json")
+        return
+
+    print(f"{'Bot Key':<20} {'名稱':<25} {'Token'}")
+    print("-" * 65)
+    for key, info in bots.items():
+        name = info.get("name", "")
+        token = info.get("token", "")
+        masked = f"{token[:8]}...{token[-4:]}" if len(token) > 12 else "(未設定)"
+        default_mark = " (default)" if key == "default" else ""
+        print(f"{key:<20} {name:<25} {masked}{default_mark}")
+
+
 def main():
     parser = argparse.ArgumentParser(description="soap-chat Slack CLI")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    # bots
+    sub.add_parser("bots", help="列出所有已設定的 bot")
+
     # channels
-    sub.add_parser("channels", help="列出可用頻道")
+    p_channels = sub.add_parser("channels", help="列出可用頻道")
+    p_channels.add_argument("--bot", default=None, help="指定使用的 bot")
 
     # send
     p_send = sub.add_parser("send", help="發送訊息")
+    p_send.add_argument("--bot", default=None, help="指定使用的 bot")
     p_send.add_argument("--channel", required=True, help="頻道名稱或 ID")
     p_send.add_argument("--message", required=True, help="訊息內容")
     p_send.add_argument("--thread-ts", help="回覆的 thread timestamp 或訊息連結")
@@ -231,20 +271,24 @@ def main():
 
     # upload
     p_upload = sub.add_parser("upload", help="上傳檔案")
+    p_upload.add_argument("--bot", default=None, help="指定使用的 bot")
     p_upload.add_argument("--channel", required=True, help="頻道名稱或 ID")
     p_upload.add_argument("--file", required=True, help="檔案路徑")
     p_upload.add_argument("--message", help="附加說明文字")
     p_upload.add_argument("--thread-ts", help="回覆的 thread timestamp 或訊息連結")
 
     args = parser.parse_args()
-    token = load_token()
 
-    if args.command == "channels":
-        cmd_channels(token)
-    elif args.command == "send":
-        cmd_send(token, args)
-    elif args.command == "upload":
-        cmd_upload(token, args)
+    if args.command == "bots":
+        cmd_bots()
+    else:
+        token = load_token(args.bot)
+        if args.command == "channels":
+            cmd_channels(token)
+        elif args.command == "send":
+            cmd_send(token, args)
+        elif args.command == "upload":
+            cmd_upload(token, args)
 
 
 if __name__ == "__main__":
