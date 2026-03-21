@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.10] - 2026-03-21
+
+### 修正
+- install-hooks 還原為只安裝 format-on-save
+- code-implement skill 移除 PreToolUse hooks（清理檢查指令）
+
 ## [1.0.9] - 2026-03-21
 
 ### 新增

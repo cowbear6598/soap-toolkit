@@ -5,19 +5,25 @@
 # Flow
 
 1. 使用 Bash 將 `${CLAUDE_PLUGIN_ROOT}/hooks/format-on-save.sh` 複製到 `~/.claude/hooks/`，如果目錄不存在則建立
-2. 確保 `format-on-save.sh` 有執行權限
-3. 讀取 `~/.claude/settings.json`，在 `hooks.PostToolUse` 中加入以下設定，保留其他既有設定不動：
+2. 確保腳本有執行權限
+3. 讀取 `~/.claude/settings.json`，在 `hooks` 中加入以下設定，保留其他既有設定不動：
 
 ```json
 {
-  "matcher": "Edit|Write",
-  "hooks": [
-    {
-      "type": "command",
-      "command": "~/.claude/hooks/format-on-save.sh",
-      "async": true
-    }
-  ]
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/format-on-save.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
 
