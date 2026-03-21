@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.0.8] - 2026-03-21
+
+### 新增
+- download skill 新增自動字幕 fallback：沒有原生字幕時自動下載 YouTube 自動生成的英文字幕
+- soap-chat 支援多 Bot，改用 config.json 管理 Bot 設定，取代 .env 單一 token 模式
+- soap-chat plugin 在 marketplace.json 中註冊，支援透過 Slack Bot 發送訊息到頻道
+- summary skill 改為 Slack mrkdwn 格式，以書的結構（目錄、章節）呈現全繁中摘要
+- transcript skill 簡化為純 faster-whisper 本地辨識，預設模型改為 medium
+- 調整 download 流程，影片與字幕分開下載，字幕優先順序 en → 中文 → 其他
+- soap-dev 新增 output-styles/ 資料夾用於管理輸出風格設定，將 conductor.md 移至該目錄
+- soap-yt plugin 支援 YouTube 影片下載、字幕取得、重點摘要、GIF 擷取、影片片段擷取
+- 調整 soap-yt skills 目錄結構至 skills/ 資料夾下
+- 重新命名 marketplace 為 soap-toolkit，新增 soap-jira plugin
+
 ## [1.0.4] - 2026-03-19
 
 ### 新增
