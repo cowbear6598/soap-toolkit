@@ -1,6 +1,18 @@
 ---
 name: code-implement
 description: "根據計畫書實作程式碼。當使用者說「開始實作」「按照計畫做」「implement」「開工」或想把計畫書轉為實際程式碼時觸發。"
+hooks:
+  PreToolUse:
+    - matcher: "Bash"
+      hooks:
+        - type: command
+          command: "${CLAUDE_SKILL_DIR}/scripts/validate-bash.sh"
+          timeout: 10
+    - matcher: "Edit|Write"
+      hooks:
+        - type: command
+          command: "${CLAUDE_SKILL_DIR}/scripts/check-path.sh"
+          timeout: 10
 ---
 
 ## 使用方式

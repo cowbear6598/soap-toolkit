@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.9] - 2026-03-21
+
+### 新增
+- code-implement skill 新增 PreToolUse hooks 驗證 Bash、Edit、Write 等工具的執行安全性
+- git-push skill 增強自動檢查功能：支援專案類型自動偵測，執行相應的測試與檢查指令
+
 ## [1.0.8] - 2026-03-21
 
 ### 新增
