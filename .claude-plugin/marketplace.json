@@ -17,6 +17,10 @@
     {
       "name": "soap-chat",
       "source": "./soap-chat"
+    },
+    {
+      "name": "soap-social",
+      "source": "./soap-social"
     }
   ]
 }
