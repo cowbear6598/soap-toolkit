@@ -1,6 +1,8 @@
 import json
 import os
+import random
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -31,12 +33,29 @@ def get_session_id() -> str:
     return session_id
 
 
+def random_delay(min_sec: float = 1.0, max_sec: float = 3.0) -> None:
+    delay = random.uniform(min_sec, max_sec)
+    time.sleep(delay)
+
+
 def make_headers(session_id: str) -> dict[str, str]:
+    chrome_major = random.randint(128, 134)
+    ua = f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_major}.0.0.0 Safari/537.36"
     return {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+        "User-Agent": ua,
         "Cookie": f"sessionid={session_id}",
         "X-IG-App-ID": "238260118697367",
         "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "identity",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Sec-Ch-Ua": f'"Chromium";v="{chrome_major}", "Google Chrome";v="{chrome_major}", "Not-A.Brand";v="99"',
+        "Sec-Ch-Ua-Platform": '"macOS"',
+        "Upgrade-Insecure-Requests": "1",
     }
 
 

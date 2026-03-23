@@ -1,5 +1,6 @@
 import argparse
 import json
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -8,11 +9,13 @@ from datetime import datetime, timezone
 
 import common
 
+FALLBACK_DOC_ID = "6232751443445612"
+
 
 def get_user_id(username: str, headers: dict[str, str]) -> str:
-    url = f"https://i.instagram.com/api/v1/users/web_profile_info/?username={urllib.parse.quote(username)}"
+    url = f"https://i.instagram.com/api/v1/users/search/?q={urllib.parse.quote(username)}"
     get_headers = {
-        "User-Agent": headers["User-Agent"],
+        "User-Agent": "Barcelona 289.0.0.77.109 Android (33/13; 420dpi; 1080x2400)",
         "X-IG-App-ID": headers["X-IG-App-ID"],
         "Cookie": headers["Cookie"],
     }
@@ -45,37 +48,126 @@ def get_user_id(username: str, headers: dict[str, str]) -> str:
         print(json.dumps({"error": "Failed to parse user info response"}))
         sys.exit(1)
 
-    user = data.get("data", {}).get("user")
-    if not user:
-        print(json.dumps({"error": f"User not found: {username}"}))
-        sys.exit(1)
+    users = data.get("users", [])
+    for user in users:
+        if user.get("username", "").lower() == username.lower():
+            user_id = user.get("pk")
+            if user_id:
+                return str(user_id)
 
-    user_id = user.get("pk") or user.get("id")
-    if not user_id:
-        print(json.dumps({"error": f"Unable to retrieve user ID for: {username}"}))
-        sys.exit(1)
-
-    return str(user_id)
+    print(json.dumps({"error": f"User not found: {username}"}))
+    sys.exit(1)
 
 
-def fetch_posts(user_id: str, headers: dict[str, str]) -> list:
+def get_page_tokens(headers: dict[str, str]) -> tuple[str, str, str]:
+    """Fetch Threads homepage and extract fb_dtsg, lsd tokens and doc_id from JS bundles."""
+    url = "https://www.threads.net/"
+    page_headers = {
+        "User-Agent": headers["User-Agent"],
+        "Cookie": headers["Cookie"],
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+    }
+    req = urllib.request.Request(url, headers=page_headers, method="GET")
+
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            html = resp.read().decode("utf-8", errors="replace")
+    except (urllib.error.HTTPError, urllib.error.URLError):
+        return "", "", FALLBACK_DOC_ID
+
+    # Extract fb_dtsg: long token (20+ chars)
+    fb_dtsg = ""
+    m = re.search(r'"token":"([^"]{20,})"', html)
+    if m:
+        fb_dtsg = m.group(1)
+
+    # Extract lsd: shorter token, typically 15-25 chars
+    lsd = ""
+    m = re.search(r'"LSD"[^"]*"([^"]{10,30})"', html)
+    if m:
+        lsd = m.group(1)
+
+    # Find JS bundle URLs from the homepage
+    bundle_urls = re.findall(
+        r'src="(https://static\.cdninstagram\.com/[^"]+\.js[^"]*)"',
+        html,
+    )
+
+    doc_id = _find_doc_id_in_bundles(bundle_urls, headers)
+    if not doc_id:
+        doc_id = FALLBACK_DOC_ID
+
+    return fb_dtsg, lsd, doc_id
+
+
+def _find_doc_id_in_bundles(bundle_urls: list[str], headers: dict[str, str]) -> str:
+    """Download JS bundles and search for the ProfileThreadsTab doc_id."""
+    fetch_headers = {
+        "User-Agent": headers["User-Agent"],
+        "Accept": "*/*",
+    }
+
+    for idx, bundle_url in enumerate(bundle_urls):
+        if idx > 0:
+            common.random_delay()
+        try:
+            req = urllib.request.Request(bundle_url, headers=fetch_headers, method="GET")
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                js = resp.read().decode("utf-8", errors="replace")
+        except (urllib.error.HTTPError, urllib.error.URLError, Exception):
+            continue
+
+        # Look for doc_id near ProfileThreadsTab or mediaData
+        # Pattern 1: __d("ProfileThreadsTabQuery_frgmt... followed by an exported number
+        m = re.search(
+            r'__d\("ProfileThreadsTab[^"]*"[^)]*\).*?e\.exports\s*=\s*"(\d{13,20})"',
+            js,
+            re.DOTALL,
+        )
+        if m:
+            return m.group(1)
+
+        # Pattern 2: exported number immediately after mediaData mention
+        m = re.search(
+            r'mediaData[^}]{0,200}e\.exports\s*=\s*"(\d{13,20})"',
+            js,
+            re.DOTALL,
+        )
+        if m:
+            return m.group(1)
+
+        # Pattern 3: generic exported 13-20 digit number associated with Threads feed
+        m = re.search(r'ProfileThreadsFeed[^}]{0,300}e\.exports\s*=\s*"(\d{13,20})"', js, re.DOTALL)
+        if m:
+            return m.group(1)
+
+    return ""
+
+
+def fetch_posts(user_id: str, headers: dict[str, str], fb_dtsg: str, lsd: str, doc_id: str) -> list:
     url = "https://www.threads.net/api/graphql"
 
     variables = json.dumps({
         "userID": user_id,
         "__relay_internal__pv__BarcelonaIsLoggedInrelayprovider": True,
         "__relay_internal__pv__BarcelonaIsThreadContextHeaderEnabledrelayprovider": False,
+        "__relay_internal__pv__BarcelonaOptionalCookiesEnabledrelayprovider": True,
+        "__relay_internal__pv__BarcelonaIsViewCountEnabledrelayprovider": False,
+        "__relay_internal__pv__BarcelonaShouldShowFediverseM075Featuresrelayprovider": False,
     })
 
     form_data = urllib.parse.urlencode({
-        "lsd": "",
+        "lsd": lsd,
+        "fb_dtsg": fb_dtsg,
         "variables": variables,
-        "doc_id": "8515750648528052",
+        "doc_id": doc_id,
     }).encode()
 
     post_headers = dict(headers)
-    post_headers["X-FB-LSD"] = ""
+    post_headers["X-FB-LSD"] = lsd
     post_headers["Sec-Fetch-Site"] = "same-origin"
+    post_headers["Origin"] = "https://www.threads.net"
 
     result = common.api_request(url, post_headers, data=form_data)
     threads = result.get("data", {}).get("mediaData", {}).get("threads", [])
@@ -144,7 +236,10 @@ def main() -> None:
     headers = common.make_headers(session_id)
 
     user_id = get_user_id(args.user, headers)
-    threads = fetch_posts(user_id, headers)
+    common.random_delay()
+    fb_dtsg, lsd, doc_id = get_page_tokens(headers)
+    common.random_delay()
+    threads = fetch_posts(user_id, headers, fb_dtsg, lsd, doc_id)
 
     posts = []
     for thread in threads:
