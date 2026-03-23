@@ -3,7 +3,7 @@ import urllib.parse
 
 from common import api_request, get_client, print_json, validate_issue_key
 
-FIELDS = "summary,status,issuetype,labels,description,comment"
+FIELDS = "summary,status,issuetype,labels,description,comment,subtasks"
 
 
 def extract_text(node: dict | None) -> str:
@@ -23,7 +23,7 @@ def get_issue(issue_key: str) -> dict:
     return api_request("GET", endpoint, headers)
 
 
-def format_issue(data: dict) -> dict:
+def format_issue(data: dict, include_subtasks: bool = False) -> dict:
     fields = data.get("fields", {})
     status = fields.get("status")
     issuetype = fields.get("issuetype")
@@ -38,7 +38,7 @@ def format_issue(data: dict) -> dict:
         for c in comments[-3:]
     ]
 
-    return {
+    result = {
         "key": data.get("key"),
         "type": issuetype.get("name") if issuetype else None,
         "status": status.get("name") if status else None,
@@ -48,15 +48,24 @@ def format_issue(data: dict) -> dict:
         "recent_comments": recent_comments,
     }
 
+    if include_subtasks:
+        result["subtasks"] = [
+            {"key": s.get("key"), "summary": s.get("fields", {}).get("summary")}
+            for s in fields.get("subtasks", [])
+        ]
+
+    return result
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Get a Jira issue by key")
     parser.add_argument("--issue", required=True, help="Issue key (e.g. DCM-1690)")
+    parser.add_argument("--include-subtasks", action="store_true", help="Include subtasks in the response")
     args = parser.parse_args()
 
     validate_issue_key(args.issue)
     data = get_issue(args.issue)
-    print_json(format_issue(data))
+    print_json(format_issue(data, include_subtasks=args.include_subtasks))
 
 
 if __name__ == "__main__":

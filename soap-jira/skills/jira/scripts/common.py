@@ -5,6 +5,7 @@ import re
 import sys
 import urllib.error
 import urllib.request
+import uuid
 
 
 def _load_dotenv() -> None:
@@ -79,15 +80,57 @@ def print_json(data: dict) -> None:
 
 
 def build_adf_doc(text: str) -> dict:
+    content = []
+    task_items = []
+
+    lines = text.split('\n')
+
+    for line in lines:
+        if line.lstrip().startswith('[]'):
+            # 提取 [] 後面的文字
+            task_text = line.lstrip()[2:].lstrip()
+            task_items.append({
+                "type": "taskItem",
+                "attrs": {
+                    "localId": f"item-{uuid.uuid4().hex[:8]}",
+                    "state": "TODO"
+                },
+                "content": [{"type": "text", "text": task_text}]
+            })
+        else:
+            # 如果有累積的 taskItems，先加入 taskList
+            if task_items:
+                content.append({
+                    "type": "taskList",
+                    "attrs": {"localId": f"list-{uuid.uuid4().hex[:8]}"},
+                    "content": task_items
+                })
+                task_items = []
+
+            # 將這行作為 paragraph 加入
+            if line:
+                content.append({
+                    "type": "paragraph",
+                    "content": [{"type": "text", "text": line}]
+                })
+            else:
+                content.append({
+                    "type": "paragraph",
+                    "content": []
+                })
+
+    # 最後如果還有累積的 taskItems，加入 taskList
+    if task_items:
+        content.append({
+            "type": "taskList",
+            "attrs": {"localId": f"list-{uuid.uuid4().hex[:8]}"},
+            "content": task_items
+        })
+
     return {
         "version": 1,
         "type": "doc",
-        "content": [
-            {
-                "type": "paragraph",
-                "content": [{"type": "text", "text": text}],
-            }
-        ],
+        "content": content
     }
 
 
