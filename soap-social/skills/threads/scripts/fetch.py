@@ -174,6 +174,45 @@ def fetch_posts(user_id: str, headers: dict[str, str], fb_dtsg: str, lsd: str, d
     return threads
 
 
+def _extract_text(post: dict) -> str:
+    """從 post 中提取文字，優先用 caption，fallback 到 snippet_attachment_info"""
+    caption = post.get("caption") or {}
+    text = caption.get("text", "") if isinstance(caption, dict) else ""
+    if text:
+        return text
+
+    # fallback: snippet_attachment_info.text_fragments.fragments[].plaintext
+    text_info = post.get("text_post_app_info") or {}
+    snippet = text_info.get("snippet_attachment_info") or {}
+    fragments_info = snippet.get("text_fragments") or {}
+    fragments = fragments_info.get("fragments") or []
+    parts = [f.get("plaintext", "") for f in fragments if f.get("plaintext")]
+    return "\n".join(parts)
+
+
+def fetch_replies(post_id: str, session_id: str) -> list[dict]:
+    """呼叫 Replies API 取得貼文的回覆串文"""
+    url = f"https://i.instagram.com/api/v1/text_feed/{post_id}/replies/"
+    headers = {
+        "User-Agent": "Barcelona 289.0.0.77.109 Android (33/13; 420dpi; 1080x2400)",
+        "X-IG-App-ID": "238260118697367",
+        "Cookie": f"sessionid={session_id}",
+    }
+
+    common.random_delay()
+
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw = resp.read().decode()
+            data = json.loads(raw) if raw else {}
+    except (urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError, Exception):
+        return []
+
+    reply_threads = data.get("reply_threads") or []
+    return reply_threads
+
+
 def _unix_to_iso(ts) -> str | None:
     if ts is None:
         return None
@@ -183,7 +222,34 @@ def _unix_to_iso(ts) -> str | None:
         return None
 
 
-def parse_post(thread: dict) -> dict | None:
+def _extract_media(post: dict) -> list[str]:
+    """Extract media URLs (image or video) from a single post object."""
+    urls: list[str] = []
+    image_versions = post.get("image_versions2")
+    if image_versions:
+        candidates = image_versions.get("candidates", [])
+        if candidates:
+            url = candidates[0].get("url")
+            if url:
+                urls.append(url)
+
+    video_versions = post.get("video_versions")
+    if video_versions and not urls:
+        url = video_versions[0].get("url") if video_versions else None
+        if url:
+            urls.append(url)
+
+    return urls
+
+
+def _get_user_id_from_post(post: dict) -> str | None:
+    """Extract the author's user id from a post object."""
+    user = post.get("user") or {}
+    uid = user.get("pk") or user.get("id")
+    return str(uid) if uid is not None else None
+
+
+def parse_post(thread: dict, session_id: str | None = None) -> dict | None:
     items = thread.get("thread_items", [])
     if not items:
         return None
@@ -193,28 +259,85 @@ def parse_post(thread: dict) -> dict | None:
         return None
 
     post_id = post.get("pk") or post.get("id")
-    caption = post.get("caption") or {}
-    text = caption.get("text") if isinstance(caption, dict) else None
+    text = _extract_text(post)
     timestamp = _unix_to_iso(post.get("taken_at"))
 
-    media = []
-    image_versions = post.get("image_versions2")
-    if image_versions:
-        candidates = image_versions.get("candidates", [])
-        if candidates:
-            url = candidates[0].get("url")
-            if url:
-                media.append(url)
+    media = _extract_media(post)
 
-    video_versions = post.get("video_versions")
-    if video_versions and not media:
-        url = video_versions[0].get("url") if video_versions else None
-        if url:
-            media.append(url)
+    # Determine the main post author for filtering thread chain items
+    main_author_id = _get_user_id_from_post(post)
 
+    # Collect texts and post IDs from timeline API items (items[1:])
+    seen_post_ids: set[str] = set()
+    if post_id is not None:
+        seen_post_ids.add(str(post_id))
+
+    extra_texts: list[str] = []
+    for item in items[1:]:
+        chain_post = item.get("post") or {}
+        if not chain_post:
+            continue
+
+        # Only merge replies from the same author
+        chain_author_id = _get_user_id_from_post(chain_post)
+        if main_author_id is None or chain_author_id != main_author_id:
+            continue
+
+        chain_pid = chain_post.get("pk") or chain_post.get("id")
+
+        chain_text = _extract_text(chain_post)
+        if chain_text:
+            extra_texts.append(chain_text)
+            # Only mark as seen when text was successfully extracted;
+            # otherwise let the Replies API pick up the full content.
+            if chain_pid is not None:
+                seen_post_ids.add(str(chain_pid))
+
+        # Collect additional media from chain items
+        media.extend(_extract_media(chain_post))
+
+    # If thread has replies or multiple items, call Replies API to get full thread
     likes = post.get("like_count") or 0
     text_post_info = post.get("text_post_app_info") or {}
-    replies = text_post_info.get("direct_reply_count") or 0
+    replies_count = text_post_info.get("direct_reply_count") or 0
+
+    if session_id and post_id:
+        try:
+            reply_threads = fetch_replies(str(post_id), session_id)
+            for rt in reply_threads:
+                rt_items = rt.get("thread_items") or []
+                for rt_item in rt_items:
+                    rt_post = rt_item.get("post") or {}
+                    if not rt_post:
+                        continue
+
+                    # Only include replies from the same author
+                    rt_author_id = _get_user_id_from_post(rt_post)
+                    if main_author_id is None or rt_author_id != main_author_id:
+                        continue
+
+                    # Deduplicate by post ID
+                    rt_pid = rt_post.get("pk") or rt_post.get("id")
+                    if rt_pid is not None:
+                        rt_pid_str = str(rt_pid)
+                        if rt_pid_str in seen_post_ids:
+                            continue
+                        seen_post_ids.add(rt_pid_str)
+
+                    rt_text = _extract_text(rt_post)
+                    if rt_text:
+                        extra_texts.append(rt_text)
+
+                    media.extend(_extract_media(rt_post))
+        except Exception:
+            pass  # Replies API 失敗時靜默跳過
+
+    if extra_texts and text:
+        text = "\n\n".join([text] + extra_texts)
+    elif extra_texts:
+        text = "\n\n".join(extra_texts)
+    elif not text:
+        text = None
 
     return {
         "id": str(post_id) if post_id is not None else None,
@@ -222,7 +345,7 @@ def parse_post(thread: dict) -> dict | None:
         "timestamp": timestamp,
         "media": media,
         "likes": likes,
-        "replies": replies,
+        "replies": replies_count,
     }
 
 
@@ -243,7 +366,7 @@ def main() -> None:
 
     posts = []
     for thread in threads:
-        post = parse_post(thread)
+        post = parse_post(thread, session_id=session_id)
         if post is not None:
             posts.append(post)
 
