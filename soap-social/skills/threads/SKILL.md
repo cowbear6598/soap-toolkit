@@ -16,14 +16,21 @@ allowed-tools: Bash(python *), Bash(python3 *)
 
 ## 工作流程
 
-### Step 1：檢查環境設定
+### Step 1：檢查環境變數
 
-確認 `<skill-dir>/.env` 存在且包含 `THREADS_SESSION_ID`。若沒有：
-1. 複製 `<skill-dir>/.env.example` 為 `<skill-dir>/.env`
-2. 引導使用者從 DevTools 取得 sessionid：
+確認系統環境變數 `THREADS_SESSION_ID` 已設定。若沒有：
+1. 引導使用者執行 `threads-setup` skill 來設定
+2. 或手動從 DevTools 取得 sessionid 並加入 shell 設定：
    - 登入 https://www.threads.net
    - F12 → Application → Cookies → threads.net → 複製 `sessionid` 的值
-3. 填入 `.env` 後再繼續
+   - 在 `~/.zshrc` 或 `~/.bashrc` 加入 `export THREADS_SESSION_ID=<值>`
+3. 重啟 Claude Code 後再繼續
+
+## 環境變數
+
+| 變數名稱 | 說明 | 必填 |
+|----------|------|------|
+| `THREADS_SESSION_ID` | Threads 登入 session ID，從瀏覽器 DevTools 取得 | 是 |
 
 ### Step 2：解析用戶名
 

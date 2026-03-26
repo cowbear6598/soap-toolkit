@@ -12,17 +12,6 @@ set -e
 echo "=== Sentry Setup ==="
 echo ""
 
-# Ask for profile name
-read -p "Profile name (e.g. work, personal): " profile
-if [ -z "$profile" ]; then
-    echo "Error: profile name cannot be empty"
-    exit 1
-fi
-
-PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
-
-echo ""
-
 # Ask for token (hidden input)
 read -sp "Sentry Auth Token: " token
 echo ""
@@ -50,26 +39,23 @@ else
     SHELL_CONFIG="$HOME/.zshrc"
 fi
 
-# Remove existing entries for this profile (if any)
-TOKEN_KEY="SENTRY_AUTH_TOKEN_${PROFILE_UPPER}"
-ORG_KEY="SENTRY_ORG_${PROFILE_UPPER}"
-
-if grep -q "$TOKEN_KEY\|$ORG_KEY" "$SHELL_CONFIG" 2>/dev/null; then
+# Remove existing entries (if any)
+if grep -q "SENTRY_AUTH_TOKEN\|SENTRY_ORG" "$SHELL_CONFIG" 2>/dev/null; then
     # Create temp file without old entries
-    grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" | grep -v "export ${ORG_KEY}=" > "${SHELL_CONFIG}.tmp"
+    grep -v "export SENTRY_AUTH_TOKEN=" "$SHELL_CONFIG" | grep -v "export SENTRY_ORG=" > "${SHELL_CONFIG}.tmp"
     mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
-    echo "Removed existing ${PROFILE_UPPER} profile entries."
+    echo "Removed existing SENTRY_AUTH_TOKEN and SENTRY_ORG entries."
 fi
 
 # Append new entries
 echo "" >> "$SHELL_CONFIG"
-echo "# Sentry profile: ${profile}" >> "$SHELL_CONFIG"
-echo "export ${TOKEN_KEY}=${token}" >> "$SHELL_CONFIG"
-echo "export ${ORG_KEY}=${org}" >> "$SHELL_CONFIG"
+echo "# Sentry credentials" >> "$SHELL_CONFIG"
+echo "export SENTRY_AUTH_TOKEN=${token}" >> "$SHELL_CONFIG"
+echo "export SENTRY_ORG=${org}" >> "$SHELL_CONFIG"
 
 echo "Written to ${SHELL_CONFIG}:"
-echo "  export ${TOKEN_KEY}=****"
-echo "  export ${ORG_KEY}=${org}"
+echo "  export SENTRY_AUTH_TOKEN=****"
+echo "  export SENTRY_ORG=${org}"
 echo ""
 echo "Done! Restart Claude Code to take effect."
 '''

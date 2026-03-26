@@ -1,36 +1,39 @@
 ---
 name: threads-setup
 description: "設定 Threads 的認證資訊。當使用者提到要設定 Threads session、設定 Threads token、setup threads、或提供 Threads session ID 要求存檔時觸發。"
-allowed-tools: Read, Write, Edit
+allowed-tools: Bash(python *), Bash(python3 *), Read
 ---
 
 # Threads 認證設定
 
+透過 Python 腳本產生 helper script，使用者在自己的 terminal 執行，Session ID 不經過對話。
+
 ## 工作流程
 
-### Step 1：接收 Session ID
+### Step 1：產生 setup script
 
-從使用者訊息中取得 Threads 的 session ID。
+執行以下指令：
 
-### Step 2：寫入 .env
-
-將 session ID 寫入 `<skill-dir>/../threads/.env`：
-
-```
-THREADS_SESSION_ID=使用者提供的值
+```bash
+python3 <skill-dir>/scripts/generate_setup.py
 ```
 
-如果 `.env` 已存在，只更新 `THREADS_SESSION_ID` 那一行，保留其他設定。
-如果 `.env` 不存在，從 `<skill-dir>/../threads/.env.example` 複製一份再填入。
+### Step 2：引導使用者
 
-### Step 3：驗證
+告訴使用者：
 
-讀取 `.env` 確認已正確寫入，顯示設定完成的訊息。
+1. 開啟自己的 terminal
+2. 執行 `bash <生成的 setup_threads.sh 的絕對路徑>`
+3. 依照提示輸入 Session ID
+4. 完成後**重啟 Claude Code** 才會生效
 
-## 注意事項
+### Step 3：告知取得 Session ID 的方式
+
+提供以下資訊：
 
 - Session ID 有效期約 90 天
-- 過期時使用者需重新從 DevTools 取得：
+- 取得方式：
   1. 登入 https://www.threads.net
-  2. F12 → Application → Cookies → threads.net
-  3. 複製 `sessionid` 的值
+  2. F12 開啟 DevTools
+  3. Application → Cookies → threads.net
+  4. 複製 `sessionid` 的值

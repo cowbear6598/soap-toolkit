@@ -58,7 +58,6 @@ def format_result(issues: list) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="List Sentry issues by project")
-    parser.add_argument("--profile", required=True, help="Profile name (reads SENTRY_AUTH_TOKEN_{PROFILE} and SENTRY_ORG_{PROFILE})")
     parser.add_argument("--project", required=True, help="Sentry project slug")
     parser.add_argument("--status", default="unresolved", choices=["unresolved", "resolved", "ignored", "all"], help="Issue status filter (default: unresolved)")
     parser.add_argument("--limit", type=int, default=25, help="Maximum number of results (default: 25, max: 100)")
@@ -68,7 +67,7 @@ def main() -> None:
         print_json({"error": "limit must be between 1 and 100"})
         sys.exit(1)
 
-    org, headers = get_client(args.profile)
+    org, headers = get_client()
     project_id = resolve_project_id(org, headers, args.project)
     issues = list_issues(org, headers, project_id, args.status, args.limit)
 

@@ -1,0 +1,76 @@
+import json
+import os
+import tempfile
+
+
+def main() -> None:
+    script_content = r'''#!/bin/bash
+set -e
+
+echo "=== Slack Setup ==="
+echo ""
+
+# Ask for profile name
+read -p "Profile name (e.g. default, notify): " profile
+if [ -z "$profile" ]; then
+    echo "Error: profile name cannot be empty"
+    exit 1
+fi
+
+PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+
+echo ""
+
+# Ask for bot token (hidden input)
+read -sp "Slack Bot Token (xoxb-...): " token
+echo ""
+if [ -z "$token" ]; then
+    echo "Error: token cannot be empty"
+    exit 1
+fi
+
+echo ""
+
+# Detect shell config file
+SHELL_CONFIG=""
+if [ -f "$HOME/.zshrc" ]; then
+    SHELL_CONFIG="$HOME/.zshrc"
+elif [ -f "$HOME/.bashrc" ]; then
+    SHELL_CONFIG="$HOME/.bashrc"
+else
+    SHELL_CONFIG="$HOME/.zshrc"
+fi
+
+# Remove existing entry for this profile (if any)
+TOKEN_KEY="SLACK_BOT_TOKEN_${PROFILE_UPPER}"
+
+if grep -q "$TOKEN_KEY" "$SHELL_CONFIG" 2>/dev/null; then
+    grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+    mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+    echo "Removed existing ${PROFILE_UPPER} profile entry."
+fi
+
+# Append new entry
+echo "" >> "$SHELL_CONFIG"
+echo "# Slack profile: ${profile}" >> "$SHELL_CONFIG"
+echo "export ${TOKEN_KEY}=${token}" >> "$SHELL_CONFIG"
+
+echo "Written to ${SHELL_CONFIG}:"
+echo "  export ${TOKEN_KEY}=****"
+echo ""
+echo "Done! Restart Claude Code to take effect."
+'''
+
+    output_path = os.path.join(tempfile.gettempdir(), "setup_slack.sh")
+    with open(output_path, "w") as f:
+        f.write(script_content)
+    os.chmod(output_path, 0o755)
+
+    print(json.dumps({
+        "script": output_path,
+        "message": f"Setup script generated at {output_path}. User should run: bash {output_path}"
+    }, ensure_ascii=False, indent=2))
+
+
+if __name__ == "__main__":
+    main()

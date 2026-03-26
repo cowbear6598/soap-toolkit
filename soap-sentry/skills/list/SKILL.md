@@ -10,31 +10,31 @@ allowed-tools: Bash(python *), Bash(python3 *), Read
 
 ## 環境變數
 
-使用前需設定以下環境變數（`{PROFILE}` 為 profile 名稱的大寫）：
+使用前需設定以下環境變數：
 
-- `SENTRY_AUTH_TOKEN_{PROFILE}`：Sentry Auth Token
-- `SENTRY_ORG_{PROFILE}`：Sentry Organization slug
+- `SENTRY_AUTH_TOKEN`：Sentry Auth Token
+- `SENTRY_ORG`：Sentry Organization slug
 
 ## 腳本一覽
 
 | 腳本 | 用途 | 必填參數 | 選填參數 |
 |------|------|----------|----------|
-| `list_issues.py` | 列出指定專案的 Issues | `--profile`, `--project` | `--status`（預設 unresolved）, `--limit`（預設 25） |
+| `list_issues.py` | 列出指定專案的 Issues | `--project` | `--status`（預設 unresolved）, `--limit`（預設 25） |
 
 ## 使用範例
 
 ```bash
 # 列出專案未解決的 issues
-python <skill-dir>/scripts/list_issues.py --profile work --project my-project
+python <skill-dir>/scripts/list_issues.py --project my-project
 
 # 列出已解決的 issues
-python <skill-dir>/scripts/list_issues.py --profile work --project my-project --status resolved
+python <skill-dir>/scripts/list_issues.py --project my-project --status resolved
 
 # 限制回傳數量
-python <skill-dir>/scripts/list_issues.py --profile work --project my-project --limit 10
+python <skill-dir>/scripts/list_issues.py --project my-project --limit 10
 
 # 列出所有狀態的 issues
-python <skill-dir>/scripts/list_issues.py --profile work --project my-project --status all
+python <skill-dir>/scripts/list_issues.py --project my-project --status all
 ```
 
 ## 輸出格式

@@ -10,22 +10,22 @@ allowed-tools: Bash(python *), Bash(python3 *), Read
 
 ## 環境變數
 
-使用前需設定以下環境變數（`{PROFILE}` 為 profile 名稱的大寫）：
+使用前需設定以下環境變數：
 
-- `SENTRY_AUTH_TOKEN_{PROFILE}`：Sentry Auth Token
-- `SENTRY_ORG_{PROFILE}`：Sentry Organization slug
+- `SENTRY_AUTH_TOKEN`：Sentry Auth Token
+- `SENTRY_ORG`：Sentry Organization slug
 
 ## 腳本一覽
 
 | 腳本 | 用途 | 必填參數 | 選填參數 |
 |------|------|----------|----------|
-| `get_detail.py` | 取得 Issue 詳情含 stacktrace | `--profile`, `--issue-id` | |
+| `get_detail.py` | 取得 Issue 詳情含 stacktrace | `--issue-id` | |
 
 ## 使用範例
 
 ```bash
 # 查看 issue 詳情
-python <skill-dir>/scripts/get_detail.py --profile work --issue-id 123456789
+python <skill-dir>/scripts/get_detail.py --issue-id 123456789
 ```
 
 ## 輸出格式

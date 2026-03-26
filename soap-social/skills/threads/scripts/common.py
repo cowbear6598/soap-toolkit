@@ -7,25 +7,7 @@ import urllib.error
 import urllib.request
 
 
-def _load_dotenv() -> None:
-    env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
-    if not os.path.isfile(env_path):
-        return
-    with open(env_path) as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, _, value = line.partition("=")
-            key = key.strip()
-            value = value.strip().strip('"').strip("'")
-            # 環境變數優先，.env 只補齊尚未設定的值
-            if key and key not in os.environ:
-                os.environ[key] = value
-
-
 def get_session_id() -> str:
-    _load_dotenv()
     session_id = os.environ.get("THREADS_SESSION_ID", "")
     if not session_id:
         print(json.dumps({"error": "Missing environment variable: THREADS_SESSION_ID"}))

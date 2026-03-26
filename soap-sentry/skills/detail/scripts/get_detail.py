@@ -70,11 +70,10 @@ def format_event(event: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Get Sentry issue detail with latest event stacktrace")
-    parser.add_argument("--profile", required=True, help="Profile name (reads SENTRY_AUTH_TOKEN_{PROFILE} and SENTRY_ORG_{PROFILE})")
     parser.add_argument("--issue-id", required=True, help="Sentry issue ID")
     args = parser.parse_args()
 
-    org, headers = get_client(args.profile)
+    org, headers = get_client()
 
     issue = get_issue_detail(org, headers, args.issue_id)
     event = get_latest_event(org, headers, args.issue_id)

@@ -24,7 +24,7 @@ python3 <skill-dir>/scripts/generate_setup.py
 
 1. 開啟自己的 terminal
 2. 執行 `bash <生成的 setup_sentry.sh 的絕對路徑>`
-3. 依照提示輸入 profile 名稱、Auth Token、Organization slug
+3. 依照提示輸入 Auth Token、Organization slug
 4. 完成後**重啟 Claude Code** 才會生效
 
 ### Step 3：告知取得 Token 的方式
@@ -37,6 +37,5 @@ python3 <skill-dir>/scripts/generate_setup.py
 ## 注意事項
 
 - Token 需要 `event:read` 和 `project:read` scope
-- 環境變數名稱的 profile 部分會自動轉大寫
-- 如果已有相同 profile 的設定，會先移除舊的再寫入新的
+- 如果已有 `SENTRY_AUTH_TOKEN` 或 `SENTRY_ORG` 的設定，會先移除舊的再寫入新的
 - 使用者必須重啟 Claude Code 才能讀到新的環境變數

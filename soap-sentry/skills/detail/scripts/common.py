@@ -5,15 +5,11 @@ import urllib.error
 import urllib.request
 
 
-def get_env(profile: str) -> tuple[str, str]:
-    suffix = profile.upper()
-    token_key = f"SENTRY_AUTH_TOKEN_{suffix}"
-    org_key = f"SENTRY_ORG_{suffix}"
+def get_env() -> tuple[str, str]:
+    token = os.environ.get("SENTRY_AUTH_TOKEN", "")
+    org = os.environ.get("SENTRY_ORG", "")
 
-    token = os.environ.get(token_key, "")
-    org = os.environ.get(org_key, "")
-
-    missing = [name for name, val in [(token_key, token), (org_key, org)] if not val]
+    missing = [name for name, val in [("SENTRY_AUTH_TOKEN", token), ("SENTRY_ORG", org)] if not val]
     if missing:
         print(json.dumps({"error": f"Missing environment variables: {', '.join(missing)}. Please set them in your shell profile."}))
         sys.exit(1)
@@ -28,8 +24,8 @@ def make_headers(token: str) -> dict[str, str]:
     }
 
 
-def get_client(profile: str) -> tuple[str, dict[str, str]]:
-    token, org = get_env(profile)
+def get_client() -> tuple[str, dict[str, str]]:
+    token, org = get_env()
     return org, make_headers(token)
 
 

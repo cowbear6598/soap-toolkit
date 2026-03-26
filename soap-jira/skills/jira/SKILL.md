@@ -6,6 +6,14 @@ allowed-tools: Bash(python *), Bash(python3 *)
 
 # Jira Cloud Skill
 
+## 環境變數
+
+使用前請確保以下環境變數已設定：
+
+- `JIRA_URL`：Jira Cloud URL（例如 https://your-domain.atlassian.net）
+- `JIRA_EMAIL`：Jira 帳號 email
+- `JIRA_API_TOKEN`：Jira API Token
+
 透過 Python 腳本操作 Jira Cloud REST API v3。所有腳本位於 `<skill-dir>/scripts/`，執行前將 `<skill-dir>` 替換為實際絕對路徑。
 
 ## 腳本一覽
