@@ -1,7 +1,7 @@
 ---
 name: threads
 description: "爬取 Threads 用戶貼文。當使用者提到 Threads、爬文、抓貼文、或想取得 Threads 上某人的貼文時觸發。即使使用者只說「幫我看一下某人的 Threads」或「抓一下他的貼文」，只要涉及 Threads 平台的內容取得，就應該使用這個 skill。"
-allowed-tools: Bash(python *), Bash(python3 *)
+allowed-tools: Bash(python3 *)
 ---
 
 # Threads Skill
@@ -14,38 +14,28 @@ allowed-tools: Bash(python *), Bash(python3 *)
 |------|------|----------|----------|
 | `fetch.py` | 抓取用戶最新貼文 | `--user` | `--count`（預設 20） |
 
-## 工作流程
-
-### Step 1：檢查環境變數
-
-確認系統環境變數 `THREADS_SESSION_ID` 已設定。若沒有：
-1. 引導使用者執行 `threads-setup` skill 來設定
-2. 或手動從 DevTools 取得 sessionid 並加入 shell 設定：
-   - 登入 https://www.threads.net
-   - F12 → Application → Cookies → threads.net → 複製 `sessionid` 的值
-   - 在 `~/.zshrc` 或 `~/.bashrc` 加入 `export THREADS_SESSION_ID=<值>`
-3. 重啟 Claude Code 後再繼續
-
 ## 環境變數
 
 | 變數名稱 | 說明 | 必填 |
 |----------|------|------|
 | `THREADS_SESSION_ID` | Threads 登入 session ID，從瀏覽器 DevTools 取得 | 是 |
 
-### Step 2：解析用戶名
+## 工作流程
+
+### Step 1：解析用戶名
 
 從使用者提供的資訊中解析出 Threads 用戶名，支援以下格式：
 - `https://www.threads.net/@username` → `username`
 - `@username` → `username`
 - `username` → `username`
 
-### Step 3：執行爬取
+### Step 2：執行爬取
 
 ```bash
-python <skill-dir>/scripts/fetch.py --user username --count 20
+python3 <skill-dir>/scripts/fetch.py --user username --count 20
 ```
 
-### Step 4：格式化顯示
+### Step 3：格式化顯示
 
 將 JSON 結果格式化顯示在 CLI，每篇貼文顯示：
 - 發文時間
@@ -66,3 +56,7 @@ python <skill-dir>/scripts/fetch.py --user username --count 20
 - Token 過期（401/403）：提示使用者重新從 DevTools 取得 sessionid
 - 用戶不存在：顯示找不到該用戶
 - 網路錯誤：顯示請求失敗原因
+
+## 注意事項
+
+- **不要在執行腳本前檢查環境變數**（不要 echo、不要 printenv、不要用任何方式確認環境變數是否存在）。直接執行腳本，腳本內部已有完整的錯誤處理，缺少環境變數時會自動回傳 JSON 錯誤訊息。

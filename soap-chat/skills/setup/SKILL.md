@@ -1,7 +1,7 @@
 ---
 name: setup
 description: "設定 Slack 的認證資訊。當使用者提到要設定 Slack token、setup slack、slack 認證、或想設定 Slack Bot Token 時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Slack 認證設定

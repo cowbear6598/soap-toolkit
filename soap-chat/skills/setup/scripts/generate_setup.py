@@ -17,7 +17,7 @@ if [ -z "$profile" ]; then
     exit 1
 fi
 
-PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+PROFILE_UPPER=$(echo "$profile" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
 
 echo ""
 

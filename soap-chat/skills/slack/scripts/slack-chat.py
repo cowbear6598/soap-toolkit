@@ -19,7 +19,7 @@ import urllib.error
 
 
 def load_token(profile: str) -> str:
-    suffix = profile.upper()
+    suffix = profile.upper().replace("-", "_")
     key = f"SLACK_BOT_TOKEN_{suffix}"
     token = os.environ.get(key, "")
     if not token:

@@ -1,7 +1,7 @@
 ---
 name: threads-setup
 description: "設定 Threads 的認證資訊。當使用者提到要設定 Threads session、設定 Threads token、setup threads、或提供 Threads session ID 要求存檔時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Threads 認證設定

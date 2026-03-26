@@ -1,7 +1,7 @@
 ---
 name: slack
 description: "發送訊息到 Slack。當使用者提到「發到 Slack」「傳到 Slack」「send to Slack」「通知 Slack」「Slack 發訊息」或想傳送內容到 Slack 頻道時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Slack Messaging
@@ -50,3 +50,4 @@ python3 <skill-dir>/scripts/slack-chat.py send --profile default --channel "#gen
 - `--channel` 可以用頻道名稱（如 `#general`）或頻道 ID（如 `C01234ABCDE`）
 - `--thread-ts` 支援 timestamp 格式或 Slack 訊息連結
 - `--blocks-json` 指向包含 Block Kit JSON 的檔案路徑
+- **不要在執行腳本前檢查環境變數**（不要 echo、不要 printenv、不要用任何方式確認環境變數是否存在）。直接執行腳本，腳本內部已有完整的錯誤處理，缺少環境變數時會自動回傳 JSON 錯誤訊息。

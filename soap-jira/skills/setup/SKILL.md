@@ -1,7 +1,7 @@
 ---
 name: setup
 description: "設定 Jira 的認證資訊。當使用者提到要設定 Jira token、setup jira、jira 認證、或想設定 Jira 環境變數時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Jira 認證設定

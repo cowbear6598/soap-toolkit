@@ -1,7 +1,7 @@
 ---
 name: detail
 description: "查看 Sentry issue 詳情。當使用者提到查看 Sentry issue 詳情、sentry detail、sentry issue 細節、查看 sentry 錯誤詳情、sentry stacktrace、或想了解某個 Sentry 錯誤的詳細資訊時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Sentry Issue 詳情查詢
@@ -25,7 +25,7 @@ allowed-tools: Bash(python *), Bash(python3 *), Read
 
 ```bash
 # 查看 issue 詳情
-python <skill-dir>/scripts/get_detail.py --issue-id 123456789
+python3 <skill-dir>/scripts/get_detail.py --issue-id 123456789
 ```
 
 ## 輸出格式
@@ -38,3 +38,7 @@ python <skill-dir>/scripts/get_detail.py --issue-id 123456789
 - `latestEvent`：最新 event 資訊（`eventID`, `dateCreated`, `tags`, `user`, `stacktrace`）
   - `stacktrace` 為陣列，每個 exception 包含 `type`, `value`, `frames`
   - 每個 frame 包含 `filename`, `function`, `lineNo`, `colNo`, `inApp`
+
+## 注意事項
+
+- **不要在執行腳本前檢查環境變數**（不要 echo、不要 printenv、不要用任何方式確認環境變數是否存在）。直接執行腳本，腳本內部已有完整的錯誤處理，缺少環境變數時會自動回傳 JSON 錯誤訊息。

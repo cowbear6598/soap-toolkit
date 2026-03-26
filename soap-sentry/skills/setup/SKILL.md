@@ -1,7 +1,7 @@
 ---
 name: setup
 description: "設定 Sentry 的認證資訊。當使用者提到要設定 Sentry token、setup sentry、sentry 認證、或想設定 Sentry 環境變數時觸發。"
-allowed-tools: Bash(python *), Bash(python3 *), Read
+allowed-tools: Bash(python3 *), Read
 ---
 
 # Sentry 認證設定
