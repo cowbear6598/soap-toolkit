@@ -67,7 +67,10 @@ fi
 echo "Written to ${SHELL_CONFIG}:"
 echo "  export ${TOKEN_KEY}=****"
 echo ""
-echo "Done! Restart Claude Code to take effect."
+echo "Done!"
+echo ""
+echo "Please run:  source ${SHELL_CONFIG}"
+echo "Then restart Claude Code to take effect."
 '''
 
     output_path = os.path.join(tempfile.gettempdir(), "setup_slack.sh")

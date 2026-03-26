@@ -73,7 +73,10 @@ echo "  export JIRA_URL=${jira_url}"
 echo "  export JIRA_EMAIL=${jira_email}"
 echo "  export JIRA_API_TOKEN=****"
 echo ""
-echo "Done! Restart Claude Code to take effect."
+echo "Done!"
+echo ""
+echo "Please run:  source ${SHELL_CONFIG}"
+echo "Then restart Claude Code to take effect."
 '''
 
     output_path = os.path.join(tempfile.gettempdir(), "setup_jira.sh")
