@@ -23,28 +23,32 @@ echo ""
 # Detect shell config file
 if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
+    # Remove existing entries
+    if grep -q "THREADS_SESSION_ID" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export THREADS_SESSION_ID=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing THREADS_SESSION_ID entry."
+    fi
+    # Append to end
+    echo "" >> "$SHELL_CONFIG"
+    echo "# Threads Session ID" >> "$SHELL_CONFIG"
+    echo "export THREADS_SESSION_ID=${session_id}" >> "$SHELL_CONFIG"
 else
-    SHELL_CONFIG="$HOME/.profile"
+    SHELL_CONFIG="$HOME/.bashrc"
+    # Remove existing entries from bashrc
+    if grep -q "THREADS_SESSION_ID" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export THREADS_SESSION_ID=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing THREADS_SESSION_ID entry."
+    fi
+    # Insert at the TOP of bashrc (before any early return)
+    TMPFILE=$(mktemp)
+    echo "# Threads Session ID" > "$TMPFILE"
+    echo "export THREADS_SESSION_ID=${session_id}" >> "$TMPFILE"
+    echo "" >> "$TMPFILE"
+    cat "$SHELL_CONFIG" >> "$TMPFILE"
+    mv "$TMPFILE" "$SHELL_CONFIG"
 fi
-
-# Clean up old entries from ~/.bashrc if any
-if [ -f "$HOME/.bashrc" ] && grep -q "THREADS_SESSION_ID" "$HOME/.bashrc" 2>/dev/null; then
-    grep -v "export THREADS_SESSION_ID=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
-    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
-    echo "Cleaned up old entries from ~/.bashrc"
-fi
-
-# Remove existing entry (if any)
-if grep -q "THREADS_SESSION_ID" "$SHELL_CONFIG" 2>/dev/null; then
-    grep -v "export THREADS_SESSION_ID=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
-    mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
-    echo "Removed existing THREADS_SESSION_ID entry."
-fi
-
-# Append new entry
-echo "" >> "$SHELL_CONFIG"
-echo "# Threads Session ID" >> "$SHELL_CONFIG"
-echo "export THREADS_SESSION_ID=${session_id}" >> "$SHELL_CONFIG"
 
 echo "Written to ${SHELL_CONFIG}:"
 echo "  export THREADS_SESSION_ID=****"

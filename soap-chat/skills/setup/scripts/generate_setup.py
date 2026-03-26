@@ -31,33 +31,38 @@ fi
 
 echo ""
 
-# Detect shell config file
-if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
-    SHELL_CONFIG="$HOME/.zshrc"
-else
-    SHELL_CONFIG="$HOME/.profile"
-fi
-
 # Remove existing entry for this profile (if any)
 TOKEN_KEY="SLACK_BOT_TOKEN_${PROFILE_UPPER}"
 
-# Clean up old entries from ~/.bashrc if any
-if [ -f "$HOME/.bashrc" ] && grep -q "$TOKEN_KEY" "$HOME/.bashrc" 2>/dev/null; then
-    grep -v "export ${TOKEN_KEY}=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
-    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
-    echo "Cleaned up old entries from ~/.bashrc"
+# Detect shell config file
+if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
+    SHELL_CONFIG="$HOME/.zshrc"
+    # Remove existing entries
+    if grep -q "$TOKEN_KEY" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing ${PROFILE_UPPER} profile entry."
+    fi
+    # Append to end
+    echo "" >> "$SHELL_CONFIG"
+    echo "# Slack profile: ${profile}" >> "$SHELL_CONFIG"
+    echo "export ${TOKEN_KEY}=${token}" >> "$SHELL_CONFIG"
+else
+    SHELL_CONFIG="$HOME/.bashrc"
+    # Remove existing entries from bashrc
+    if grep -q "$TOKEN_KEY" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing ${PROFILE_UPPER} profile entry."
+    fi
+    # Insert at the TOP of bashrc (before any early return)
+    TMPFILE=$(mktemp)
+    echo "# Slack profile: ${profile}" > "$TMPFILE"
+    echo "export ${TOKEN_KEY}=${token}" >> "$TMPFILE"
+    echo "" >> "$TMPFILE"
+    cat "$SHELL_CONFIG" >> "$TMPFILE"
+    mv "$TMPFILE" "$SHELL_CONFIG"
 fi
-
-if grep -q "$TOKEN_KEY" "$SHELL_CONFIG" 2>/dev/null; then
-    grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
-    mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
-    echo "Removed existing ${PROFILE_UPPER} profile entry."
-fi
-
-# Append new entry
-echo "" >> "$SHELL_CONFIG"
-echo "# Slack profile: ${profile}" >> "$SHELL_CONFIG"
-echo "export ${TOKEN_KEY}=${token}" >> "$SHELL_CONFIG"
 
 echo "Written to ${SHELL_CONFIG}:"
 echo "  export ${TOKEN_KEY}=****"

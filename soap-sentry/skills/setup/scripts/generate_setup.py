@@ -32,30 +32,34 @@ echo ""
 # Detect shell config file
 if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
+    # Remove existing entries
+    if grep -q "SENTRY_AUTH_TOKEN\|SENTRY_ORG" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export SENTRY_AUTH_TOKEN=" "$SHELL_CONFIG" | grep -v "export SENTRY_ORG=" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing SENTRY_AUTH_TOKEN and SENTRY_ORG entries."
+    fi
+    # Append to end
+    echo "" >> "$SHELL_CONFIG"
+    echo "# Sentry credentials" >> "$SHELL_CONFIG"
+    echo "export SENTRY_AUTH_TOKEN=${token}" >> "$SHELL_CONFIG"
+    echo "export SENTRY_ORG=${org}" >> "$SHELL_CONFIG"
 else
-    SHELL_CONFIG="$HOME/.profile"
+    SHELL_CONFIG="$HOME/.bashrc"
+    # Remove existing entries from bashrc
+    if grep -q "SENTRY_AUTH_TOKEN\|SENTRY_ORG" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export SENTRY_AUTH_TOKEN=" "$SHELL_CONFIG" | grep -v "export SENTRY_ORG=" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing SENTRY_AUTH_TOKEN and SENTRY_ORG entries."
+    fi
+    # Insert at the TOP of bashrc (before any early return)
+    TMPFILE=$(mktemp)
+    echo "# Sentry credentials" > "$TMPFILE"
+    echo "export SENTRY_AUTH_TOKEN=${token}" >> "$TMPFILE"
+    echo "export SENTRY_ORG=${org}" >> "$TMPFILE"
+    echo "" >> "$TMPFILE"
+    cat "$SHELL_CONFIG" >> "$TMPFILE"
+    mv "$TMPFILE" "$SHELL_CONFIG"
 fi
-
-# Clean up old entries from ~/.bashrc if any
-if [ -f "$HOME/.bashrc" ] && grep -q "SENTRY_AUTH_TOKEN\|SENTRY_ORG" "$HOME/.bashrc" 2>/dev/null; then
-    grep -v "export SENTRY_AUTH_TOKEN=\|export SENTRY_ORG=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
-    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
-    echo "Cleaned up old entries from ~/.bashrc"
-fi
-
-# Remove existing entries (if any)
-if grep -q "SENTRY_AUTH_TOKEN\|SENTRY_ORG" "$SHELL_CONFIG" 2>/dev/null; then
-    # Create temp file without old entries
-    grep -v "export SENTRY_AUTH_TOKEN=" "$SHELL_CONFIG" | grep -v "export SENTRY_ORG=" > "${SHELL_CONFIG}.tmp"
-    mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
-    echo "Removed existing SENTRY_AUTH_TOKEN and SENTRY_ORG entries."
-fi
-
-# Append new entries
-echo "" >> "$SHELL_CONFIG"
-echo "# Sentry credentials" >> "$SHELL_CONFIG"
-echo "export SENTRY_AUTH_TOKEN=${token}" >> "$SHELL_CONFIG"
-echo "export SENTRY_ORG=${org}" >> "$SHELL_CONFIG"
 
 echo "Written to ${SHELL_CONFIG}:"
 echo "  export SENTRY_AUTH_TOKEN=****"

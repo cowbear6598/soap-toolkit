@@ -37,30 +37,36 @@ echo ""
 # Detect shell config file
 if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
+    # Remove existing entries
+    if grep -q "JIRA_URL\|JIRA_EMAIL\|JIRA_API_TOKEN" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export JIRA_URL=\|export JIRA_EMAIL=\|export JIRA_API_TOKEN=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing Jira entries."
+    fi
+    # Append to end
+    echo "" >> "$SHELL_CONFIG"
+    echo "# Jira credentials" >> "$SHELL_CONFIG"
+    echo "export JIRA_URL=${jira_url}" >> "$SHELL_CONFIG"
+    echo "export JIRA_EMAIL=${jira_email}" >> "$SHELL_CONFIG"
+    echo "export JIRA_API_TOKEN=${jira_token}" >> "$SHELL_CONFIG"
 else
-    SHELL_CONFIG="$HOME/.profile"
+    SHELL_CONFIG="$HOME/.bashrc"
+    # Remove existing entries from bashrc
+    if grep -q "JIRA_URL\|JIRA_EMAIL\|JIRA_API_TOKEN" "$SHELL_CONFIG" 2>/dev/null; then
+        grep -v "export JIRA_URL=\|export JIRA_EMAIL=\|export JIRA_API_TOKEN=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
+        mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
+        echo "Removed existing Jira entries."
+    fi
+    # Insert at the TOP of bashrc (before any early return)
+    TMPFILE=$(mktemp)
+    echo "# Jira credentials" > "$TMPFILE"
+    echo "export JIRA_URL=${jira_url}" >> "$TMPFILE"
+    echo "export JIRA_EMAIL=${jira_email}" >> "$TMPFILE"
+    echo "export JIRA_API_TOKEN=${jira_token}" >> "$TMPFILE"
+    echo "" >> "$TMPFILE"
+    cat "$SHELL_CONFIG" >> "$TMPFILE"
+    mv "$TMPFILE" "$SHELL_CONFIG"
 fi
-
-# Clean up old entries from ~/.bashrc if any
-if [ -f "$HOME/.bashrc" ] && grep -q "JIRA_URL\|JIRA_EMAIL\|JIRA_API_TOKEN" "$HOME/.bashrc" 2>/dev/null; then
-    grep -v "export JIRA_URL=\|export JIRA_EMAIL=\|export JIRA_API_TOKEN=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
-    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
-    echo "Cleaned up old entries from ~/.bashrc"
-fi
-
-# Remove existing entries (if any)
-if grep -q "JIRA_URL\|JIRA_EMAIL\|JIRA_API_TOKEN" "$SHELL_CONFIG" 2>/dev/null; then
-    grep -v "export JIRA_URL=\|export JIRA_EMAIL=\|export JIRA_API_TOKEN=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
-    mv "${SHELL_CONFIG}.tmp" "$SHELL_CONFIG"
-    echo "Removed existing Jira entries."
-fi
-
-# Append new entries
-echo "" >> "$SHELL_CONFIG"
-echo "# Jira credentials" >> "$SHELL_CONFIG"
-echo "export JIRA_URL=${jira_url}" >> "$SHELL_CONFIG"
-echo "export JIRA_EMAIL=${jira_email}" >> "$SHELL_CONFIG"
-echo "export JIRA_API_TOKEN=${jira_token}" >> "$SHELL_CONFIG"
 
 echo "Written to ${SHELL_CONFIG}:"
 echo "  export JIRA_URL=${jira_url}"
