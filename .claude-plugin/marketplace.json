@@ -21,6 +21,10 @@
     {
       "name": "soap-social",
       "source": "./soap-social"
+    },
+    {
+      "name": "soap-sentry",
+      "source": "./soap-sentry"
     }
   ]
 }
