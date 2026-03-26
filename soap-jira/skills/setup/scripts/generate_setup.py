@@ -35,13 +35,17 @@ fi
 echo ""
 
 # Detect shell config file
-SHELL_CONFIG=""
-if [ -f "$HOME/.zshrc" ]; then
+if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
-elif [ -f "$HOME/.bashrc" ]; then
-    SHELL_CONFIG="$HOME/.bashrc"
 else
-    SHELL_CONFIG="$HOME/.zshrc"
+    SHELL_CONFIG="$HOME/.profile"
+fi
+
+# Clean up old entries from ~/.bashrc if any
+if [ -f "$HOME/.bashrc" ] && grep -q "JIRA_URL\|JIRA_EMAIL\|JIRA_API_TOKEN" "$HOME/.bashrc" 2>/dev/null; then
+    grep -v "export JIRA_URL=\|export JIRA_EMAIL=\|export JIRA_API_TOKEN=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
+    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
+    echo "Cleaned up old entries from ~/.bashrc"
 fi
 
 # Remove existing entries (if any)

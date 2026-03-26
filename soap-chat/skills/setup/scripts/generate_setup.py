@@ -32,17 +32,21 @@ fi
 echo ""
 
 # Detect shell config file
-SHELL_CONFIG=""
-if [ -f "$HOME/.zshrc" ]; then
+if [ -n "$ZSH_VERSION" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
     SHELL_CONFIG="$HOME/.zshrc"
-elif [ -f "$HOME/.bashrc" ]; then
-    SHELL_CONFIG="$HOME/.bashrc"
 else
-    SHELL_CONFIG="$HOME/.zshrc"
+    SHELL_CONFIG="$HOME/.profile"
 fi
 
 # Remove existing entry for this profile (if any)
 TOKEN_KEY="SLACK_BOT_TOKEN_${PROFILE_UPPER}"
+
+# Clean up old entries from ~/.bashrc if any
+if [ -f "$HOME/.bashrc" ] && grep -q "$TOKEN_KEY" "$HOME/.bashrc" 2>/dev/null; then
+    grep -v "export ${TOKEN_KEY}=" "$HOME/.bashrc" > "$HOME/.bashrc.tmp"
+    mv "$HOME/.bashrc.tmp" "$HOME/.bashrc"
+    echo "Cleaned up old entries from ~/.bashrc"
+fi
 
 if grep -q "$TOKEN_KEY" "$SHELL_CONFIG" 2>/dev/null; then
     grep -v "export ${TOKEN_KEY}=" "$SHELL_CONFIG" > "${SHELL_CONFIG}.tmp"
