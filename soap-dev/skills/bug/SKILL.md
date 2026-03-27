@@ -16,7 +16,7 @@ disallowedTools: [Edit, Write, NotebookEdit]
 
 ### Step 1：探索專案結構
 
-使用 Agent tool（`subagent_type: Explore`）了解整個專案的架構：
+使用 Agent tool（`subagent_type: Explore`，`model: sonnet`）了解整個專案的架構：
 - 有哪些子專案（前端、後端）
 - 各自用什麼框架 / 技術棧
 - 子專案之間的關係（哪個前端打哪個後端的 API）
@@ -30,7 +30,7 @@ disallowedTools: [Edit, Write, NotebookEdit]
 - 使用者的操作流程是什麼（點了什麼按鈕 → 觸發什麼動作 → 呼叫什麼 API）
 - 如果使用者沒提供操作步驟，從功能名稱或錯誤位置反推這個功能的使用流程
 
-使用 Agent tool（`subagent_type: Explore`）搜尋 codebase 來追蹤這條路徑。
+使用 Agent tool（`subagent_type: Explore`，`model: sonnet`）搜尋 codebase 來追蹤這條路徑。
 
 ### Step 3：沿路徑追蹤呼叫鏈
 
@@ -40,7 +40,7 @@ disallowedTools: [Edit, Write, NotebookEdit]
 - **API 段**：路由 → Controller → Service
 - **資料段**：資料庫查詢 → 資料轉換 → 回傳
 
-每個 Agent 使用 `subagent_type: Explore`，prompt 要明確告訴 agent：
+每個 Agent 使用 `subagent_type: Explore`，`model: sonnet`，prompt 要明確告訴 agent：
 1. 你在追蹤哪條路徑的哪一段
 2. 你要找什麼（相關的檔案、函數、API 端點）
 3. 特別注意哪些可能出錯的地方（例如：型別轉換、null check、邊界條件、非同步處理）
