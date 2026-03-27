@@ -3,6 +3,21 @@ import argparse
 from common import api_request, get_client, print_json
 
 
+def resolve_issue_id(org: str, headers: dict[str, str], issue_id: str) -> str:
+    """Resolve shortId (e.g. PROJECT-ABC) to numeric issue ID."""
+    if issue_id.isdigit():
+        return issue_id
+    import urllib.parse
+    query = urllib.parse.urlencode({"query": f"issue:{issue_id}", "limit": 1})
+    url = f"https://sentry.io/api/0/organizations/{org}/issues/?{query}"
+    issues = api_request(url, headers)
+    if not isinstance(issues, list) or len(issues) == 0:
+        print_json({"error": f"Could not resolve shortId '{issue_id}' to an issue"})
+        import sys
+        sys.exit(1)
+    return str(issues[0]["id"])
+
+
 def get_issue_detail(org: str, headers: dict[str, str], issue_id: str) -> dict:
     url = f"https://sentry.io/api/0/organizations/{org}/issues/{issue_id}/"
     return api_request(url, headers)
@@ -70,13 +85,15 @@ def format_event(event: dict) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Get Sentry issue detail with latest event stacktrace")
-    parser.add_argument("--issue-id", required=True, help="Sentry issue ID")
+    parser.add_argument("--issue-id", required=True, help="Sentry issue ID (numeric) or shortId (e.g. PROJECT-ABC)")
     args = parser.parse_args()
 
     org, headers = get_client()
 
-    issue = get_issue_detail(org, headers, args.issue_id)
-    event = get_latest_event(org, headers, args.issue_id)
+    issue_id = resolve_issue_id(org, headers, args.issue_id)
+
+    issue = get_issue_detail(org, headers, issue_id)
+    event = get_latest_event(org, headers, issue_id)
 
     result = {
         "issue": format_issue(issue),

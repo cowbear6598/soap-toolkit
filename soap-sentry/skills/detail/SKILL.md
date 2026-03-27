@@ -19,13 +19,16 @@ allowed-tools: Bash(python3 *), Read
 
 | 腳本 | 用途 | 必填參數 | 選填參數 |
 |------|------|----------|----------|
-| `get_detail.py` | 取得 Issue 詳情含 stacktrace | `--issue-id` | |
+| `get_detail.py` | 取得 Issue 詳情含 stacktrace | `--issue-id`（數字 ID 或 shortId） | |
 
 ## 使用範例
 
 ```bash
-# 查看 issue 詳情
+# 用數字 ID 查看 issue 詳情
 python3 <skill-dir>/scripts/get_detail.py --issue-id 123456789
+
+# 用 shortId 查看 issue 詳情
+python3 <skill-dir>/scripts/get_detail.py --issue-id PROJECT-ABC
 ```
 
 ## 輸出格式

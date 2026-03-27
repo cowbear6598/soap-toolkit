@@ -25,17 +25,18 @@ python3 <skill-dir>/scripts/generate_setup.py
 1. 開啟自己的 terminal
 2. 執行 `bash <生成的 setup_sentry.sh 的絕對路徑>`
 3. 依照提示輸入 Auth Token、Organization slug
-4. 完成後**重啟 Claude Code** 才會生效
+4. 完成後執行 `source ~/.zshrc`（如果是 bash 則執行 `source ~/.bashrc`）讓環境變數生效
+5. **重啟 Claude Code** 才能讀到新的環境變數
 
 ### Step 3：告知取得 Token 的方式
 
 提供以下資訊：
 
-- **Auth Token**：登入 https://sentry.io → Settings → Custom Integrations → Create New Integration → Internal Integration → 設定 Permissions（Issue & Event: Read, Project: Read）→ Save → 複製底部 Token
+- **Auth Token**：登入 https://sentry.io → Settings → Custom Integrations → Create New Integration → Internal Integration → 設定 Permissions（Organization: Read, Issue & Event: Read, Project: Read）→ Save → 點擊 Create Token → 複製產生的 Token
 - **Organization slug**：從 URL 取得 `https://sentry.io/organizations/{org-slug}/`
 
 ## 注意事項
 
-- Token 需要 `event:read` 和 `project:read` scope
+- Token 需要 `org:read`、`event:read` 和 `project:read` scope
 - 如果已有 `SENTRY_AUTH_TOKEN` 或 `SENTRY_ORG` 的設定，會先移除舊的再寫入新的
-- 使用者必須重啟 Claude Code 才能讀到新的環境變數
+- 使用者必須先 `source` shell 設定檔，再重啟 Claude Code 才能讀到新的環境變數
