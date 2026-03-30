@@ -43,7 +43,21 @@ python3 <skill-dir>/scripts/slack-chat.py send --profile default --channel "#gen
 
 ## 輸出格式
 
-所有輸出皆為 JSON。錯誤時輸出 `{"error": "..."}`。
+所有成功輸出皆為 JSON，失敗時錯誤訊息輸出到 stderr，exit code 為 1。
+
+**send 成功範例：**
+```json
+{"ok": true, "channel": "#general", "ts": "1234567890.123456"}
+```
+
+**upload 成功範例：**
+```json
+{"ok": true, "channel": "#general", "file": {"id": "F0123ABC", "name": "image.png"}}
+```
+
+**失敗範例：** 錯誤訊息輸出到 stderr，exit code 1。
+
+回傳的 `ts` 可用於後續 `--thread-ts` 參數，用來回覆該訊息（建立 thread）。
 
 ## 注意事項
 

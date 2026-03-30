@@ -148,7 +148,7 @@ def cmd_send(token, args):
 
     if resp.get("ok"):
         ts = resp.get("ts", "")
-        print(f"已發送到 #{args.channel}（ts: {ts}）")
+        print(json.dumps({"ok": True, "channel": f"#{args.channel}", "ts": ts}))
     else:
         print(f"發送失敗：{resp.get('error', 'unknown')}", file=sys.stderr)
         sys.exit(1)
@@ -198,7 +198,8 @@ def cmd_upload(token, args):
 
     resp = slack_api(token, "files.completeUploadExternal", data=complete_data)
     if resp.get("ok"):
-        print(f"已上傳 {file_name} 到 #{args.channel}")
+        file_info = resp.get("files", [{}])[0] if resp.get("files") else {"id": file_id, "name": file_name}
+        print(json.dumps({"ok": True, "channel": f"#{args.channel}", "file": file_info}))
     else:
         print(f"完成上傳失敗：{resp.get('error', 'unknown')}", file=sys.stderr)
         sys.exit(1)
