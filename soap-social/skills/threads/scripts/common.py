@@ -1,18 +1,10 @@
 import json
-import os
 import random
 import sys
 import time
 import urllib.error
 import urllib.request
-
-
-def get_session_id() -> str:
-    session_id = os.environ.get("THREADS_SESSION_ID", "")
-    if not session_id:
-        print(json.dumps({"error": "Missing environment variable: THREADS_SESSION_ID"}))
-        sys.exit(1)
-    return session_id
+from typing import Optional
 
 
 def random_delay(min_sec: float = 1.0, max_sec: float = 3.0) -> None:
@@ -20,12 +12,11 @@ def random_delay(min_sec: float = 1.0, max_sec: float = 3.0) -> None:
     time.sleep(delay)
 
 
-def make_headers(session_id: str) -> dict[str, str]:
+def make_headers() -> dict[str, str]:
     chrome_major = random.randint(128, 134)
     ua = f"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_major}.0.0.0 Safari/537.36"
     return {
         "User-Agent": ua,
-        "Cookie": f"sessionid={session_id}",
         "X-IG-App-ID": "238260118697367",
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -41,6 +32,14 @@ def make_headers(session_id: str) -> dict[str, str]:
     }
 
 
+def make_googlebot_headers() -> dict[str, str]:
+    return {
+        "User-Agent": "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+        "Accept": "text/html",
+        "Accept-Encoding": "identity",
+    }
+
+
 def _parse_body(raw: str) -> dict:
     try:
         return json.loads(raw)
@@ -48,17 +47,16 @@ def _parse_body(raw: str) -> dict:
         return {"raw": raw}
 
 
-def api_request(url: str, headers: dict[str, str], data: bytes | None = None) -> dict:
-    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+def api_request(url: str, headers: dict[str, str], data: Optional[bytes] = None, method: str = "GET") -> dict:
+    if data is not None and method == "GET":
+        method = "POST"
+    req = urllib.request.Request(url, data=data, headers=headers, method=method)
 
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             raw = resp.read().decode()
             return _parse_body(raw) if raw else {}
     except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            print(json.dumps({"error": "Session expired. 請重新從 DevTools 取得 sessionid"}))
-            sys.exit(1)
         raw = e.read().decode()
         detail = _parse_body(raw)
         print(json.dumps({"error": f"HTTP {e.code} {e.reason}", "detail": detail}))

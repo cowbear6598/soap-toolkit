@@ -12,20 +12,14 @@ allowed-tools: Bash(python3 *)
 
 | 腳本 | 用途 | 必填參數 | 選填參數 |
 |------|------|----------|----------|
-| `fetch.py` | 抓取用戶最新貼文 | `--user` | `--count`（預設 20） |
-
-## 環境變數
-
-| 變數名稱 | 說明 | 必填 |
-|----------|------|------|
-| `THREADS_SESSION_ID` | Threads 登入 session ID，從瀏覽器 DevTools 取得 | 是 |
+| `fetch.py` | 抓取用戶最新貼文 | `--user` | `--count`（預設 20，上限約 15 篇） |
 
 ## 工作流程
 
 ### Step 1：解析用戶名
 
 從使用者提供的資訊中解析出 Threads 用戶名，支援以下格式：
-- `https://www.threads.net/@username` → `username`
+- `https://www.threads.com/@username` → `username`
 - `@username` → `username`
 - `username` → `username`
 
@@ -53,10 +47,10 @@ python3 <skill-dir>/scripts/fetch.py --user username --count 20
 
 ## 錯誤處理
 
-- Token 過期（401/403）：提示使用者重新從 DevTools 取得 sessionid
 - 用戶不存在：顯示找不到該用戶
 - 網路錯誤：顯示請求失敗原因
 
 ## 注意事項
 
-- **不要在執行腳本前檢查環境變數**（不要 echo、不要 printenv、不要用任何方式確認環境變數是否存在）。直接執行腳本，腳本內部已有完整的錯誤處理，缺少環境變數時會自動回傳 JSON 錯誤訊息。
+- **免 cookie 方式**：腳本使用 Googlebot UA 抓取 SSR HTML，不需要任何認證或環境變數。
+- **貼文數量上限**：SSR 頁面最多回傳約 15 篇貼文，無法分頁，指定超過此數的 `--count` 也不會有更多結果。
