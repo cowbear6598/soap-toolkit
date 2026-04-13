@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.15] - 2026-04-13
+
+### 新增
+- soap-dev:review 新增 Step 2，透過 `scripts/closure.py` 追蹤 import 依賴 closure，支援正向+反向關聯、無限深度、循環偵測、語言感知排除第三方
+- 新增 `scripts/closure.py` 純 Python stdlib 依賴追蹤器，支援 TS/JS/Python/C#/Go/Rust，無法解析不靜默 fallback
+- soap-dev:code-implement Step 1 改為三來源判定（Plan 檔 → Conversation context → 反問），支援「三問判準」、plan/context 優先級規則、測試框架偵測擴充
+- review 和 code-implement skills 增加 frontmatter 權限：review 加 `git *` + `python3 *`；code-implement 加 Bash test 指令 + Task
+
 ## [1.0.10] - 2026-03-21
 
 ### 修正
