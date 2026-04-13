@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.0.16] - 2026-04-13
+
+### 修正
+- closure.py：重新定義 unresolvable 語意，外部 import（stdlib / 未列入 manifest 的第三方）改為靜默略過，不再進 unresolvable，解決無 manifest 專案的 Python/Node/Go stdlib import 產生大量雜訊
+- closure.py：relative import 解析失敗（含被註解掉的 import）改為靜默略過，不再產生偽陽性 unresolvable；unresolvable 現在僅保留真正壞掉的情況（讀檔失敗、不支援副檔名、腳本內例外）
+
 ## [1.0.15] - 2026-04-13
 
 ### 新增

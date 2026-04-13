@@ -713,8 +713,10 @@ class Closure:
                 found = self._pick_existing(cands)
                 if found is not None:
                     return found, None
-                # in-project but not found => unresolvable
-                return None, f"cannot resolve import '{target}' (in-project per go.mod module path, but file not found)"
+                # in-project per go.mod prefix but file not found. Silently skip —
+                # commonly a stale/commented import or an unresolved relative miss;
+                # not a script error. Real errors still flow via except paths.
+                return None, None
             # else non-relative => manifest lookup below
 
         # 1. relative prefix => in-project
@@ -723,16 +725,28 @@ class Closure:
             found = self._pick_existing(cands)
             if found is not None:
                 return found, None
-            return None, f"cannot resolve relative import '{target}'"
+            # Relative import target not found. Silently skip — the regex may have
+            # picked up a commented-out / removed import, or the file was renamed.
+            # Not a script error; don't pollute unresolvable.
+            return None, None
 
         # 2. read manifest
         deps, err, manifest_path = self._get_manifest_deps(lang, from_file)
         if deps is None:
-            # no manifest or parse error -> record & don't recurse
-            globs = LANGUAGES[lang]["manifest_globs"]
-            if err and err.startswith("manifest not found"):
-                return None, f"manifest not found: {globs}, cannot decide third-party for import '{target}'"
-            return None, f"{err}, cannot decide third-party for import '{target}'"
+            # Manifest missing: cannot decide if third-party. Treat as external
+            # (stdlib / built-in / unmanaged) and silently skip — do not recurse,
+            # do not record as unresolvable. Genuine manifest parse errors still
+            # fall through here; we also skip silently to avoid per-import noise
+            # (the parse failure itself is surfaced separately via the cache /
+            # any caller that inspects manifest state).
+            if err and not err.startswith("manifest not found"):
+                # Try to resolve in-project as a best-effort fallback, since we
+                # cannot consult the dep list.
+                cands = self._resolve_candidates(lang, target, from_file)
+                found = self._pick_existing(cands)
+                if found is not None:
+                    return found, None
+            return None, None
 
         # 3. check third-party match
         top = target.split(".")[0] if lang == "python" else target.split("/")[0]
@@ -749,8 +763,13 @@ class Closure:
         if found is not None:
             return found, None
 
-        # 5. unresolvable
-        return None, f"cannot resolve import '{target}' (not third-party per manifest, not found in project)"
+        # 5. cannot decide between stdlib/built-in and a missing project file.
+        # Prefer silent skip over noisy unresolvable entries — stdlib imports
+        # (Python json/os/sys, Node fs/path/http, Go fmt/net/http, C# System.*,
+        # Rust std::*) commonly land here because manifests only list
+        # third-party packages. Real resolution failures are still reported
+        # via unsupported-extension / read-error / extraction-error paths.
+        return None, None
 
     # ---------- forward index ----------
     def _compute_forward(self, file_path: Path) -> set[str]:
