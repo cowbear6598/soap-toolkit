@@ -226,13 +226,242 @@ def parse_cargo_toml(path: Path) -> set[str]:
     return deps
 
 
+# --- Java / Kotlin manifest ----------------------------------------------
+_GRADLE_DEP_RE = re.compile(
+    r"""^\s*(?:implementation|api|testImplementation|androidTestImplementation|compile|compileOnly|runtimeOnly|kapt|ksp)\s*"""
+    r"""[\(\s]\s*['"]([^:'"]+):([^:'"]+)(?::[^'"]+)?['"]""",
+    re.MULTILINE,
+)
+
+
+def parse_jvm_manifest(path: Path) -> set[str]:
+    """Parse pom.xml / build.gradle / build.gradle.kts / settings.gradle."""
+    deps: set[str] = set()
+    name = path.name
+    if name == "pom.xml":
+        tree = ET.parse(str(path))
+        root = tree.getroot()
+        for elem in root.iter():
+            tag = elem.tag
+            if "}" in tag:
+                tag = tag.split("}", 1)[1]
+            if tag == "dependency":
+                group = None
+                artifact = None
+                for child in elem:
+                    ctag = child.tag
+                    if "}" in ctag:
+                        ctag = ctag.split("}", 1)[1]
+                    if ctag == "groupId":
+                        group = (child.text or "").strip()
+                    elif ctag == "artifactId":
+                        artifact = (child.text or "").strip()
+                if artifact:
+                    deps.add(artifact)
+                    if group:
+                        deps.add(f"{group}.{artifact}")
+                        deps.add(group)
+        return deps
+    # gradle flavours
+    text = path.read_text(encoding="utf-8")
+    for m in _GRADLE_DEP_RE.finditer(text):
+        group = m.group(1).strip()
+        artifact = m.group(2).strip()
+        if artifact:
+            deps.add(artifact)
+        if group:
+            deps.add(group)
+            if artifact:
+                deps.add(f"{group}.{artifact}")
+    return deps
+
+
+# --- Swift manifest -------------------------------------------------------
+_SWIFT_PACKAGE_RE = re.compile(r"""\.package\s*\(\s*url\s*:\s*"([^"]+)\"""")
+_PODFILE_POD_RE = re.compile(r"""^\s*pod\s+['"]([^'"]+)['"]""", re.MULTILINE)
+
+
+def parse_swift_manifest(path: Path) -> set[str]:
+    deps: set[str] = set()
+    text = path.read_text(encoding="utf-8")
+    if path.name == "Package.swift":
+        for m in _SWIFT_PACKAGE_RE.finditer(text):
+            url = m.group(1).rstrip("/")
+            last = url.rsplit("/", 1)[-1]
+            if last.endswith(".git"):
+                last = last[:-4]
+            if last:
+                deps.add(last)
+        return deps
+    if path.name == "Podfile":
+        for m in _PODFILE_POD_RE.finditer(text):
+            deps.add(m.group(1).strip())
+        return deps
+    return deps
+
+
+# --- Dart pubspec ---------------------------------------------------------
+def parse_pubspec(path: Path) -> set[str]:
+    """Minimal pubspec.yaml scanner — no YAML parser in stdlib.
+
+    Returns a set of dependency names. Also stashes the package `name:` value
+    into a module-level cache keyed by manifest path so resolve_dart can decide
+    whether `package:X/...` means the local project.
+    """
+    deps: set[str] = set()
+    lines = path.read_text(encoding="utf-8").splitlines()
+    section = None  # 'deps' or None
+    pkg_name: str | None = None
+    for raw in lines:
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        # top-level key (no leading space)
+        if raw[0] not in (" ", "\t"):
+            key = raw.split(":", 1)[0].strip()
+            if key in ("dependencies", "dev_dependencies", "dependency_overrides"):
+                section = "deps"
+            else:
+                section = None
+                if key == "name":
+                    parts = raw.split(":", 1)
+                    if len(parts) == 2:
+                        val = parts[1].strip().strip('"').strip("'")
+                        if val:
+                            pkg_name = val
+            continue
+        # nested under a section
+        if section == "deps":
+            stripped = raw.lstrip()
+            indent = len(raw) - len(stripped)
+            # keys at indent >= 2 and contain ':'
+            if indent >= 2 and ":" in stripped:
+                key = stripped.split(":", 1)[0].strip()
+                # skip nested attributes like 'path:', 'version:', 'git:' under a dep
+                # heuristic: accept only keys that are valid package names and at indent==2
+                if indent == 2 and re.match(r"^[a-zA-Z_][\w]*$", key):
+                    deps.add(key)
+    _PUBSPEC_NAME_CACHE[str(path)] = pkg_name
+    return deps
+
+
+_PUBSPEC_NAME_CACHE: dict[str, str | None] = {}
+
+
+# --- Ruby Gemfile ---------------------------------------------------------
+_GEMFILE_GEM_RE = re.compile(r"""^\s*gem\s+['"]([^'"]+)['"]""", re.MULTILINE)
+
+
+def parse_gemfile(path: Path) -> set[str]:
+    deps: set[str] = set()
+    if path.name == "Gemfile":
+        text = path.read_text(encoding="utf-8")
+        for m in _GEMFILE_GEM_RE.finditer(text):
+            deps.add(m.group(1).strip())
+        return deps
+    if path.name == "Gemfile.lock":
+        # parse GEM section: indented lines of "  name (version)"
+        in_gem = False
+        for raw in path.read_text(encoding="utf-8").splitlines():
+            if raw.strip() == "GEM":
+                in_gem = True
+                continue
+            if in_gem:
+                if raw and not raw.startswith(" "):
+                    in_gem = False
+                    continue
+                m = re.match(r"^\s{4}([a-zA-Z0-9_\-]+)\s*\(", raw)
+                if m:
+                    deps.add(m.group(1))
+        return deps
+    if path.name.endswith(".gemspec"):
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r"""add_(?:runtime_|development_)?dependency\s*\(?\s*['"]([^'"]+)['"]""", text):
+            deps.add(m.group(1).strip())
+        return deps
+    return deps
+
+
+# --- PHP composer.json ----------------------------------------------------
+_PSR4_CACHE: dict[str, dict[str, list[str]]] = {}
+
+
+def parse_composer(path: Path) -> set[str]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    deps: set[str] = set()
+    for key in ("require", "require-dev"):
+        d = data.get(key) or {}
+        if isinstance(d, dict):
+            deps.update(d.keys())
+    # capture PSR-4 autoload map for resolve_php
+    psr4: dict[str, list[str]] = {}
+    for autoload_key in ("autoload", "autoload-dev"):
+        auto = data.get(autoload_key) or {}
+        if isinstance(auto, dict):
+            m = auto.get("psr-4") or {}
+            if isinstance(m, dict):
+                for ns, pth in m.items():
+                    if isinstance(pth, str):
+                        psr4.setdefault(ns, []).append(pth)
+                    elif isinstance(pth, list):
+                        for x in pth:
+                            if isinstance(x, str):
+                                psr4.setdefault(ns, []).append(x)
+    _PSR4_CACHE[str(path)] = psr4
+    return deps
+
+
+# --- C/C++ manifest -------------------------------------------------------
+_CMAKE_FIND_PACKAGE_RE = re.compile(r"find_package\s*\(\s*(\w+)")
+
+
+def parse_c_manifest(path: Path) -> set[str]:
+    deps: set[str] = set()
+    name = path.name
+    if name == "vcpkg.json":
+        data = json.loads(path.read_text(encoding="utf-8"))
+        for d in data.get("dependencies", []) or []:
+            if isinstance(d, str):
+                deps.add(d)
+            elif isinstance(d, dict):
+                n = d.get("name")
+                if n:
+                    deps.add(str(n))
+        return deps
+    if name == "conanfile.txt":
+        text = path.read_text(encoding="utf-8")
+        in_req = False
+        for raw in text.splitlines():
+            s = raw.strip()
+            if s.startswith("[") and s.endswith("]"):
+                in_req = s == "[requires]"
+                continue
+            if in_req and s and not s.startswith("#"):
+                # e.g. "boost/1.83.0"
+                pkg = s.split("/")[0].strip()
+                if pkg:
+                    deps.add(pkg)
+        return deps
+    if name == "CMakeLists.txt":
+        text = path.read_text(encoding="utf-8")
+        for m in _CMAKE_FIND_PACKAGE_RE.finditer(text):
+            deps.add(m.group(1))
+        return deps
+    if name == "Makefile":
+        # Makefiles rarely declare deps; return empty (not an error)
+        return deps
+    return deps
+
+
 # ---------------------------------------------------------------------------
 # Import resolvers
 # ---------------------------------------------------------------------------
 TS_EXTS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
+TS_EXTS_WITH_SFC = TS_EXTS + [".vue", ".svelte", ".astro"]
 
 
-def resolve_ts(target: str, from_file: Path, project_root: Path) -> list[Path]:
+def resolve_ts(target: str, from_file: Path, project_root: Path, exts: list[str] | None = None) -> list[Path]:
+    if exts is None:
+        exts = TS_EXTS
     if not (target.startswith("./") or target.startswith("../") or target.startswith("/")):
         return []
     if target.startswith("/"):
@@ -242,15 +471,15 @@ def resolve_ts(target: str, from_file: Path, project_root: Path) -> list[Path]:
     # ensure it's inside project_root (best-effort)
     candidates: list[Path] = []
     # direct with known extensions
-    for ext in TS_EXTS:
+    for ext in exts:
         candidates.append(base.with_suffix(ext) if base.suffix == "" else Path(str(base) + ext))
     # already has extension?
-    if base.suffix in TS_EXTS:
+    if base.suffix in exts:
         candidates.insert(0, base)
     # direct path as-is
     candidates.append(base)
     # index files
-    for ext in TS_EXTS:
+    for ext in exts:
         candidates.append(base / f"index{ext}")
     # dedupe while preserving order
     seen: set[str] = set()
@@ -401,6 +630,192 @@ def resolve_rust(target: str, from_file: Path, project_root: Path) -> list[Path]
     return candidates
 
 
+# --- JVM (Java / Kotlin) -------------------------------------------------
+_JVM_SOURCE_ROOTS = [
+    "src/main/java",
+    "src/main/kotlin",
+    "src/test/java",
+    "src/test/kotlin",
+]
+
+
+def resolve_jvm(target: str, from_file: Path, project_root: Path, project_files: set[Path]) -> list[Path]:
+    parts = target.split(".")
+    if not parts:
+        return []
+    # strip possible static member suffix (best effort: last element could be a class member)
+    candidates: list[Path] = []
+    for root_rel in _JVM_SOURCE_ROOTS:
+        root = project_root / root_rel
+        for i in range(len(parts), 0, -1):
+            sub = parts[:i]
+            p = root
+            for part in sub:
+                p = p / part
+            candidates.append(Path(str(p) + ".java"))
+            candidates.append(Path(str(p) + ".kt"))
+    # fallback: any top-level directory under project_root that contains a matching path
+    try:
+        for entry in project_root.iterdir():
+            if entry.is_dir() and entry.name not in SKIP_DIRS:
+                for i in range(len(parts), 0, -1):
+                    sub = parts[:i]
+                    p = entry
+                    for part in sub:
+                        p = p / part
+                    candidates.append(Path(str(p) + ".java"))
+                    candidates.append(Path(str(p) + ".kt"))
+    except OSError:
+        pass
+    # fallback by filename match (last segment = class name)
+    last = parts[-1]
+    for f in project_files:
+        if f.suffix in (".java", ".kt") and f.stem == last:
+            candidates.append(f)
+    return candidates
+
+
+# --- Swift ---------------------------------------------------------------
+def resolve_swift(target: str, from_file: Path, project_root: Path, project_files: set[Path]) -> list[Path]:
+    # target is a module name; within same-target Swift files we can't resolve.
+    # Best-effort: look for Sources/<target>/ folder and any .swift file directly named target.
+    candidates: list[Path] = []
+    src_dir = project_root / "Sources" / target
+    if src_dir.is_dir():
+        try:
+            for entry in src_dir.iterdir():
+                if entry.is_file() and entry.suffix == ".swift":
+                    candidates.append(entry)
+        except OSError:
+            pass
+    for f in project_files:
+        if f.suffix == ".swift" and f.stem == target:
+            candidates.append(f)
+    return candidates
+
+
+# --- Dart ----------------------------------------------------------------
+def resolve_dart(target: str, from_file: Path, project_root: Path, pubspec_path: Path | None) -> list[Path]:
+    candidates: list[Path] = []
+    if target.startswith("dart:"):
+        return []  # stdlib
+    if target.startswith("package:"):
+        # package:name/path.dart
+        rest = target[len("package:"):]
+        if "/" not in rest:
+            return []
+        pkg_name, _, inner = rest.partition("/")
+        local_name = None
+        if pubspec_path is not None:
+            local_name = _PUBSPEC_NAME_CACHE.get(str(pubspec_path))
+        if local_name and pkg_name == local_name:
+            # maps to lib/<inner>
+            p = project_root / "lib" / inner
+            candidates.append(p)
+        return candidates
+    # relative path
+    if target.startswith("./") or target.startswith("../") or not target.startswith(("/", "package:", "dart:")):
+        base = (from_file.parent / target).resolve()
+        candidates.append(base)
+        if not base.suffix:
+            candidates.append(Path(str(base) + ".dart"))
+    return candidates
+
+
+# --- Ruby ----------------------------------------------------------------
+def resolve_ruby(target: str, from_file: Path, project_root: Path, project_files: set[Path]) -> list[Path]:
+    # target has a leading './' if it was require_relative, OR is relative-looking
+    is_relative = target.startswith("./") or target.startswith("../")
+    candidates: list[Path] = []
+    if is_relative:
+        base = (from_file.parent / target).resolve()
+        candidates.append(base)
+        if not base.suffix:
+            candidates.append(Path(str(base) + ".rb"))
+        return candidates
+    # non-relative: look under lib/ and app/ as common roots, then filename match
+    for root_rel in ("lib", "app"):
+        p = project_root / root_rel / target
+        candidates.append(Path(str(p) + ".rb"))
+    # filename fallback
+    last = target.split("/")[-1]
+    for f in project_files:
+        if f.suffix == ".rb" and f.stem == last:
+            candidates.append(f)
+    return candidates
+
+
+# --- PHP -----------------------------------------------------------------
+def resolve_php(target: str, from_file: Path, project_root: Path,
+                composer_path: Path | None) -> list[Path]:
+    # target could be a namespace (e.g. "App\Foo\Bar") or a relative path (./foo.php)
+    candidates: list[Path] = []
+    if target.startswith("./") or target.startswith("../") or target.endswith(".php"):
+        base = (from_file.parent / target).resolve()
+        candidates.append(base)
+        if not base.suffix:
+            candidates.append(Path(str(base) + ".php"))
+        return candidates
+    # namespace resolution via PSR-4
+    if composer_path is None:
+        return []
+    psr4 = _PSR4_CACHE.get(str(composer_path)) or {}
+    # normalise: use '\\' -> '\\'
+    # target uses backslashes. ns keys in psr4 usually end with '\\'
+    ns = target
+    best: tuple[str, str] | None = None  # (ns_prefix, dir)
+    for prefix, dirs in psr4.items():
+        # prefix may or may not end with '\\'
+        pnorm = prefix.rstrip("\\")
+        if ns == pnorm or ns.startswith(pnorm + "\\"):
+            if best is None or len(pnorm) > len(best[0]):
+                for d in dirs:
+                    best = (pnorm, d)
+    if best is None:
+        return []
+    pnorm, directory = best
+    remainder = ns[len(pnorm):].lstrip("\\")
+    rel_path = remainder.replace("\\", "/")
+    base = project_root / directory.rstrip("/") / rel_path
+    candidates.append(Path(str(base) + ".php"))
+    return candidates
+
+
+# --- C / C++ -------------------------------------------------------------
+def resolve_c(target: str, from_file: Path, project_root: Path, project_files: set[Path]) -> list[Path]:
+    candidates: list[Path] = []
+    # relative to the including file's directory
+    base = (from_file.parent / target).resolve()
+    candidates.append(base)
+    # fallback: filename match anywhere in project
+    name = os.path.basename(target)
+    for f in project_files:
+        if f.name == name:
+            candidates.append(f)
+    return candidates
+
+
+# ---------------------------------------------------------------------------
+# SFC script extraction (Vue / Svelte / Astro)
+# ---------------------------------------------------------------------------
+_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE)
+_ASTRO_FRONTMATTER_RE = re.compile(r"^\s*---\s*\n(.*?)\n---", re.DOTALL)
+
+
+def _extract_script_blocks(content: str, language: str) -> list[str]:
+    blocks: list[str] = []
+    if language in ("vue", "svelte"):
+        for m in _SCRIPT_BLOCK_RE.finditer(content):
+            blocks.append(m.group(1))
+    elif language == "astro":
+        m = _ASTRO_FRONTMATTER_RE.match(content)
+        if m:
+            blocks.append(m.group(1))
+        for m2 in _SCRIPT_BLOCK_RE.finditer(content):
+            blocks.append(m2.group(1))
+    return blocks
+
+
 # ---------------------------------------------------------------------------
 # Import extraction patterns
 # ---------------------------------------------------------------------------
@@ -430,6 +845,37 @@ RUST_IMPORT_PATTERNS = [
     re.compile(r"""^\s*mod\s+([a-zA-Z_]\w*)\s*;""", re.MULTILINE),
 ]
 
+JAVA_IMPORT_PATTERNS = [
+    re.compile(r"""^\s*import\s+(?:static\s+)?([\w.]+)\s*;""", re.MULTILINE),
+]
+
+KOTLIN_IMPORT_PATTERNS = [
+    re.compile(r"""^\s*import\s+([\w.]+)(?:\s+as\s+\w+)?\s*$""", re.MULTILINE),
+]
+
+SWIFT_IMPORT_PATTERNS = [
+    re.compile(r"""^\s*import\s+(\w+)""", re.MULTILINE),
+]
+
+DART_IMPORT_PATTERNS = [
+    re.compile(r"""^\s*import\s+['"]([^'"]+)['"]""", re.MULTILINE),
+    re.compile(r"""^\s*export\s+['"]([^'"]+)['"]""", re.MULTILINE),
+    re.compile(r"""^\s*part\s+['"]([^'"]+)['"]""", re.MULTILINE),
+]
+
+RUBY_REQUIRE_RE = re.compile(r"""^\s*require\s+['"]([^'"]+)['"]""", re.MULTILINE)
+RUBY_REQUIRE_RELATIVE_RE = re.compile(r"""^\s*require_relative\s+['"]([^'"]+)['"]""", re.MULTILINE)
+
+PHP_IMPORT_PATTERNS = [
+    re.compile(r"""^\s*use\s+([\w\\]+)(?:\s+as\s+\w+)?\s*;""", re.MULTILINE),
+    re.compile(
+        r"""^\s*(?:require|require_once|include|include_once)\s*\(?\s*['"]([^'"]+)['"]""",
+        re.MULTILINE,
+    ),
+]
+
+C_INCLUDE_RE = re.compile(r"""^\s*#\s*include\s+"([^"]+)\"""", re.MULTILINE)
+
 
 def extract_ts_imports(text: str) -> list[str]:
     out: list[str] = []
@@ -437,6 +883,25 @@ def extract_ts_imports(text: str) -> list[str]:
         for m in pat.finditer(text):
             out.append(m.group(1))
     return out
+
+
+def _extract_ts_imports_from_sfc(text: str, language: str) -> list[str]:
+    out: list[str] = []
+    for block in _extract_script_blocks(text, language):
+        out.extend(extract_ts_imports(block))
+    return out
+
+
+def extract_vue_imports(text: str) -> list[str]:
+    return _extract_ts_imports_from_sfc(text, "vue")
+
+
+def extract_svelte_imports(text: str) -> list[str]:
+    return _extract_ts_imports_from_sfc(text, "svelte")
+
+
+def extract_astro_imports(text: str) -> list[str]:
+    return _extract_ts_imports_from_sfc(text, "astro")
 
 
 def extract_py_imports(text: str) -> list[str]:
@@ -483,6 +948,52 @@ def extract_rust_imports(text: str) -> list[str]:
     return out
 
 
+def extract_java_imports(text: str) -> list[str]:
+    return [m.group(1) for m in JAVA_IMPORT_PATTERNS[0].finditer(text)]
+
+
+def extract_kotlin_imports(text: str) -> list[str]:
+    return [m.group(1) for m in KOTLIN_IMPORT_PATTERNS[0].finditer(text)]
+
+
+def extract_swift_imports(text: str) -> list[str]:
+    return [m.group(1) for m in SWIFT_IMPORT_PATTERNS[0].finditer(text)]
+
+
+def extract_dart_imports(text: str) -> list[str]:
+    out: list[str] = []
+    for pat in DART_IMPORT_PATTERNS:
+        for m in pat.finditer(text):
+            out.append(m.group(1))
+    return out
+
+
+def extract_ruby_imports(text: str) -> list[str]:
+    """Return normalised targets. require_relative targets get a './' prefix
+    (if not already relative) so the resolve stage can recognise them as local."""
+    out: list[str] = []
+    for m in RUBY_REQUIRE_RELATIVE_RE.finditer(text):
+        t = m.group(1)
+        if not (t.startswith("./") or t.startswith("../")):
+            t = "./" + t
+        out.append(t)
+    for m in RUBY_REQUIRE_RE.finditer(text):
+        out.append(m.group(1))
+    return out
+
+
+def extract_php_imports(text: str) -> list[str]:
+    out: list[str] = []
+    for pat in PHP_IMPORT_PATTERNS:
+        for m in pat.finditer(text):
+            out.append(m.group(1))
+    return out
+
+
+def extract_c_imports(text: str) -> list[str]:
+    return [m.group(1) for m in C_INCLUDE_RE.finditer(text)]
+
+
 # ---------------------------------------------------------------------------
 # Language registry
 # ---------------------------------------------------------------------------
@@ -494,6 +1005,30 @@ LANGUAGES: dict[str, dict] = {
         "extract": extract_ts_imports,
         "parse_manifest": parse_package_json,
         "resolve": "ts",
+    },
+    "vue": {
+        "extensions": {".vue"},
+        "manifest_globs": ["package.json"],
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_vue_imports,
+        "parse_manifest": parse_package_json,
+        "resolve": "ts_sfc",
+    },
+    "svelte": {
+        "extensions": {".svelte"},
+        "manifest_globs": ["package.json"],
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_svelte_imports,
+        "parse_manifest": parse_package_json,
+        "resolve": "ts_sfc",
+    },
+    "astro": {
+        "extensions": {".astro"},
+        "manifest_globs": ["package.json"],
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_astro_imports,
+        "parse_manifest": parse_package_json,
+        "resolve": "ts_sfc",
     },
     "python": {
         "extensions": {".py"},
@@ -527,6 +1062,64 @@ LANGUAGES: dict[str, dict] = {
         "extract": extract_rust_imports,
         "parse_manifest": parse_cargo_toml,
         "resolve": "rust",
+    },
+    "java": {
+        "extensions": {".java"},
+        "manifest_globs": ["pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle"],
+        "relative_prefixes": [],
+        "extract": extract_java_imports,
+        "parse_manifest": parse_jvm_manifest,
+        "resolve": "jvm",
+    },
+    "kotlin": {
+        "extensions": {".kt"},
+        "manifest_globs": ["build.gradle", "build.gradle.kts", "pom.xml", "settings.gradle"],
+        "relative_prefixes": [],
+        "extract": extract_kotlin_imports,
+        "parse_manifest": parse_jvm_manifest,
+        "resolve": "jvm",
+    },
+    "swift": {
+        "extensions": {".swift"},
+        "manifest_globs": ["Package.swift", "Podfile"],
+        "relative_prefixes": [],
+        "extract": extract_swift_imports,
+        "parse_manifest": parse_swift_manifest,
+        "resolve": "swift",
+    },
+    "dart": {
+        "extensions": {".dart"},
+        "manifest_globs": ["pubspec.yaml"],
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_dart_imports,
+        "parse_manifest": parse_pubspec,
+        "resolve": "dart",
+    },
+    "ruby": {
+        "extensions": {".rb"},
+        "manifest_globs": ["Gemfile", "Gemfile.lock", "*.gemspec"],
+        # Relative detection is done by target prefix ('./' or '../') — see extract_ruby_imports.
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_ruby_imports,
+        "parse_manifest": parse_gemfile,
+        "resolve": "ruby",
+    },
+    "php": {
+        "extensions": {".php"},
+        "manifest_globs": ["composer.json"],
+        "relative_prefixes": ["./", "../"],
+        "extract": extract_php_imports,
+        "parse_manifest": parse_composer,
+        "resolve": "php",
+    },
+    "c": {
+        "extensions": {".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hh"},
+        "manifest_globs": ["vcpkg.json", "conanfile.txt", "CMakeLists.txt", "Makefile"],
+        # #include "x" is always relative-ish; resolve_c handles both.
+        "relative_prefixes": ["./", "../", ""],
+        "extract": extract_c_imports,
+        "parse_manifest": parse_c_manifest,
+        "resolve": "c",
     },
 }
 
@@ -620,6 +1213,8 @@ class Closure:
             result = (None, f"manifest not found: {globs}", None)
             self._manifest_cache[key] = result
             return result
+        # Try parsers; for multi-manifest languages (e.g. C/C++ with several
+        # manifest globs), walk through and accept the first that parses.
         try:
             if lang == "python":
                 if manifest.name == "pyproject.toml":
@@ -666,13 +1261,27 @@ class Closure:
     def _is_relative_import(self, lang: str, target: str) -> bool:
         if lang == "python":
             return target.startswith(".")
+        if lang == "dart":
+            if target.startswith("dart:") or target.startswith("package:"):
+                return False
+            return True  # relative file path
+        if lang == "ruby":
+            return target.startswith("./") or target.startswith("../")
+        if lang == "c":
+            # #include "x" is always in-project-ish
+            return True
+        if lang == "php":
+            # relative if looks like a filesystem path or ends with .php
+            return target.startswith("./") or target.startswith("../") or target.endswith(".php")
         prefixes = LANGUAGES[lang]["relative_prefixes"]
-        return any(target.startswith(p) for p in prefixes)
+        return any(target.startswith(p) for p in prefixes if p)
 
     def _resolve_candidates(self, lang: str, target: str, from_file: Path) -> list[Path]:
         kind = LANGUAGES[lang]["resolve"]
         if kind == "ts":
             return resolve_ts(target, from_file, self.project_root)
+        if kind == "ts_sfc":
+            return resolve_ts(target, from_file, self.project_root, TS_EXTS_WITH_SFC)
         if kind == "python":
             return resolve_python(target, from_file, self.project_root)
         if kind == "cs":
@@ -682,6 +1291,20 @@ class Closure:
             return resolve_go(target, from_file, self.project_root, mod)
         if kind == "rust":
             return resolve_rust(target, from_file, self.project_root)
+        if kind == "jvm":
+            return resolve_jvm(target, from_file, self.project_root, self.project_files)
+        if kind == "swift":
+            return resolve_swift(target, from_file, self.project_root, self.project_files)
+        if kind == "dart":
+            _, _, manifest_path = self._get_manifest_deps("dart", from_file)
+            return resolve_dart(target, from_file, self.project_root, manifest_path)
+        if kind == "ruby":
+            return resolve_ruby(target, from_file, self.project_root, self.project_files)
+        if kind == "php":
+            _, _, manifest_path = self._get_manifest_deps("php", from_file)
+            return resolve_php(target, from_file, self.project_root, manifest_path)
+        if kind == "c":
+            return resolve_c(target, from_file, self.project_root, self.project_files)
         return []
 
     def _pick_existing(self, candidates: list[Path]) -> Path | None:
@@ -705,6 +1328,27 @@ class Closure:
         reason is None when the import is definitively third-party (skip silently)
         OR when it successfully resolved to a project file.
         """
+        # Dart: handle stdlib / package: prefix up-front
+        if lang == "dart":
+            if target.startswith("dart:"):
+                return None, None
+            if target.startswith("package:"):
+                # May resolve to local project if name matches pubspec's `name`
+                cands = self._resolve_candidates(lang, target, from_file)
+                found = self._pick_existing(cands)
+                if found is not None:
+                    return found, None
+                return None, None  # external package
+
+        # C/C++: system headers via <...> are filtered at extraction; only quoted
+        # headers reach here. Resolve as relative/in-project.
+        if lang == "c":
+            cands = self._resolve_candidates(lang, target, from_file)
+            found = self._pick_existing(cands)
+            if found is not None:
+                return found, None
+            return None, None
+
         # For go, "relative" actually means "starts with module path"
         if lang == "go":
             mod = self._get_go_module_path(from_file)
@@ -733,15 +1377,18 @@ class Closure:
         # 2. read manifest
         deps, err, manifest_path = self._get_manifest_deps(lang, from_file)
         if deps is None:
-            # Manifest missing: cannot decide if third-party. Treat as external
-            # (stdlib / built-in / unmanaged) and silently skip — do not recurse,
-            # do not record as unresolvable. Genuine manifest parse errors still
-            # fall through here; we also skip silently to avoid per-import noise
-            # (the parse failure itself is surfaced separately via the cache /
-            # any caller that inspects manifest state).
+            # Manifest missing or parse-failed: cannot decide if third-party. Treat
+            # as external (stdlib / built-in / unmanaged) and silently skip — do
+            # not recurse, do not record as unresolvable. Try best-effort
+            # in-project resolve as a fallback when parse failed.
             if err and not err.startswith("manifest not found"):
-                # Try to resolve in-project as a best-effort fallback, since we
-                # cannot consult the dep list.
+                cands = self._resolve_candidates(lang, target, from_file)
+                found = self._pick_existing(cands)
+                if found is not None:
+                    return found, None
+            # For languages where non-relative means certainly in-project (e.g.
+            # JVM, PHP namespace), still attempt resolve via candidates.
+            if lang in ("java", "kotlin", "php", "ruby", "swift"):
                 cands = self._resolve_candidates(lang, target, from_file)
                 found = self._pick_existing(cands)
                 if found is not None:
@@ -749,11 +1396,18 @@ class Closure:
             return None, None
 
         # 3. check third-party match
-        top = target.split(".")[0] if lang == "python" else target.split("/")[0]
-        if lang == "rust":
-            top = target.split("::")[0]
-        if lang == "csharp":
+        if lang == "python":
             top = target.split(".")[0]
+        elif lang == "rust":
+            top = target.split("::")[0]
+        elif lang == "csharp":
+            top = target.split(".")[0]
+        elif lang in ("java", "kotlin"):
+            top = target.split(".")[0]
+        elif lang == "php":
+            top = target.split("\\")[0]
+        else:
+            top = target.split("/")[0]
         if target in deps or top in deps:
             return None, None  # third-party, skip
 
@@ -766,9 +1420,10 @@ class Closure:
         # 5. cannot decide between stdlib/built-in and a missing project file.
         # Prefer silent skip over noisy unresolvable entries — stdlib imports
         # (Python json/os/sys, Node fs/path/http, Go fmt/net/http, C# System.*,
-        # Rust std::*) commonly land here because manifests only list
-        # third-party packages. Real resolution failures are still reported
-        # via unsupported-extension / read-error / extraction-error paths.
+        # Rust std::*, Java java.util.*, etc.) commonly land here because
+        # manifests only list third-party packages. Real resolution failures
+        # are still reported via unsupported-extension / read-error /
+        # extraction-error paths.
         return None, None
 
     # ---------- forward index ----------
@@ -788,11 +1443,16 @@ class Closure:
 
         try:
             text = file_path.read_text(encoding="utf-8")
-        except UnicodeDecodeError as e:
-            self._add_unresolvable(file_path, f"UnicodeDecodeError: {e}")
+        except UnicodeDecodeError:
+            # Binary file masquerading as a source extension (e.g. HLS .ts video
+            # segments). Not a code error — silently skip, do not record.
             return result
         except OSError as e:
             self._add_unresolvable(file_path, f"read error: {e}")
+            return result
+        except ValueError:
+            # Some platforms raise ValueError for odd decoder states; treat as
+            # binary / unreadable and skip silently.
             return result
         except Exception as e:
             self._add_unresolvable(file_path, f"unexpected read error: {e}")

@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.17] - 2026-04-13
+
+### 新增
+- closure.py 擴充 10 個語言支援：Vue（SFC）、Svelte、Astro、Java、Kotlin、Swift、Dart、Ruby、PHP、C/C++
+- SFC 類 (Vue/Svelte/Astro) 能抽取 `<script>` 區塊與 Astro `---` frontmatter 後套 TS/JS 解析
+- 新增 Dart pubspec.yaml、PHP composer.json (PSR-4)、Ruby Gemfile、Java pom.xml / build.gradle、C/C++ include 等 manifest 解析器
+
+### 修正
+- closure.py：UnicodeDecodeError 改為靜默略過，不再進 unresolvable（解決 HLS 視訊切片 .ts 檔與 TypeScript 撞名的偽陽性雜訊）
+
 ## [1.0.16] - 2026-04-13
 
 ### 修正
