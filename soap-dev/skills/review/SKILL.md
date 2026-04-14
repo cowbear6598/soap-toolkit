@@ -8,7 +8,14 @@ allowed-tools: Bash(git *), Bash(python3 *)
 
 ### Step 1：了解變更範圍
 
-執行 `git diff --name-only HEAD` 取得本次改動的檔案清單（包含 staged 和 unstaged）。如果沒有任何變更，**返回「無需 review」訊息並終止整個流程，不得進入 Step 2**。
+執行以下兩個指令並合併去重取得本次改動的檔案清單：
+
+1. `git diff --name-only HEAD` — tracked 的改動（staged + unstaged，包含 modified / added / deleted）
+2. `git ls-files --others --exclude-standard` — untracked 的新增檔案（自動排除 .gitignore 規則）
+
+兩份清單聯集去重後作為 changed files。若最終清單為空，返回「無需 review」訊息並終止整個流程，不得進入 Step 2。
+
+註：deleted 檔案會在 Step 2 呼叫 closure.py 前的「過濾實體不存在路徑」步驟自然剔除，不需特別處理。
 
 ### Step 2：計算依賴 closure
 
