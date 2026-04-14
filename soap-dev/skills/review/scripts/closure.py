@@ -457,6 +457,7 @@ def parse_c_manifest(path: Path) -> set[str]:
 # ---------------------------------------------------------------------------
 TS_EXTS = [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]
 TS_EXTS_WITH_SFC = TS_EXTS + [".vue", ".svelte", ".astro"]
+CSS_EXTS = [".css", ".scss", ".sass", ".less"]
 
 
 def resolve_ts(target: str, from_file: Path, project_root: Path, exts: list[str] | None = None) -> list[Path]:
@@ -476,6 +477,15 @@ def resolve_ts(target: str, from_file: Path, project_root: Path, exts: list[str]
     # already has extension?
     if base.suffix in exts:
         candidates.insert(0, base)
+    # CSS-family side import: `import './x.css'`, `import './x.scss'`, etc.
+    # Also try bare CSS-extension fallbacks so `import './variables'` resolving
+    # to variables.scss works. Keeps TS imports of stylesheets out of the
+    # unresolvable / unsupported-extension bucket.
+    if base.suffix.lower() in CSS_EXTS:
+        candidates.insert(0, base)
+    else:
+        for ext in CSS_EXTS:
+            candidates.append(Path(str(base) + ext))
     # direct path as-is
     candidates.append(base)
     # index files
@@ -995,6 +1005,141 @@ def extract_c_imports(text: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# CSS family import extraction
+# ---------------------------------------------------------------------------
+# Strip /* ... */ block comments (non-greedy, multi-line) and // line comments
+# (SCSS / Less) before regexing for @-rules.
+_CSS_BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
+_CSS_LINE_COMMENT_RE = re.compile(r"//[^\n]*")
+
+# @import handles both string form and url(...) form, optional media queries after.
+#   @import "path";
+#   @import 'path';
+#   @import url("path");
+#   @import url(path);
+#   @import url("path") screen and (min-width: 0);
+_CSS_IMPORT_RE = re.compile(
+    r"""@import\s+(?:url\(\s*(?:"([^"]+)"|'([^']+)'|([^)'"\s]+))\s*\)|"([^"]+)"|'([^']+)')""",
+    re.IGNORECASE,
+)
+
+# @use / @forward are SCSS-only; path is always quoted.
+_CSS_USE_RE = re.compile(r"""@use\s+['"]([^'"]+)['"]""", re.IGNORECASE)
+_CSS_FORWARD_RE = re.compile(r"""@forward\s+['"]([^'"]+)['"]""", re.IGNORECASE)
+
+
+def _strip_css_comments(text: str) -> str:
+    text = _CSS_BLOCK_COMMENT_RE.sub("", text)
+    text = _CSS_LINE_COMMENT_RE.sub("", text)
+    return text
+
+
+def extract_css_imports(text: str) -> list[str]:
+    """Extract dependency paths from a CSS / SCSS / Sass / Less source.
+
+    Handles @import (string & url() forms), SCSS @use / @forward. Bare url()
+    declarations in non-@-rule positions are ignored to avoid pulling in image
+    assets as dependencies.
+    """
+    cleaned = _strip_css_comments(text)
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _add(p: str | None) -> None:
+        if not p:
+            return
+        p = p.strip()
+        if not p or p in seen:
+            return
+        seen.add(p)
+        out.append(p)
+
+    for m in _CSS_IMPORT_RE.finditer(cleaned):
+        # first non-None group across the alternatives
+        for g in m.groups():
+            if g:
+                _add(g)
+                break
+    for m in _CSS_USE_RE.finditer(cleaned):
+        _add(m.group(1))
+    for m in _CSS_FORWARD_RE.finditer(cleaned):
+        _add(m.group(1))
+    return out
+
+
+def resolve_css(
+    target: str,
+    from_file: Path,
+    project_root: Path,
+) -> list[Path]:
+    """Resolve a CSS/SCSS/Sass/Less @import / @use / @forward target to candidate paths.
+
+    Rules:
+    - Skip external / data / http(s) urls and webpack '~name/...' aliases.
+    - Absolute paths (leading '/') resolve against project_root.
+    - Anything else (including './', '../', or a bare filename like 'variables')
+      resolves against the directory of the importing file.
+    - When the target lacks a known CSS extension, try in order:
+        <name>.scss, <name>.sass, <name>.less, <name>.css,
+        _<name>.scss, _<name>.sass (SCSS partial convention),
+        <name>/index.{scss,sass,less,css},
+        <name>/_index.{scss,sass} (SCSS index partials).
+    - When the target already has a CSS extension, try it as-is first, and also
+      the partial form (prepend '_' to the basename) as a fallback.
+    """
+    # external / non-file schemes — never a project dep
+    if target.startswith(("data:", "http://", "https://", "//")):
+        return []
+    # webpack node_modules alias (~bootstrap/scss/...) — external
+    if target.startswith("~"):
+        return []
+
+    if target.startswith("/"):
+        base = (project_root / target.lstrip("/"))
+    else:
+        # './', '../', or bare name — all relative to from_file's dir
+        base = (from_file.parent / target)
+
+    candidates: list[Path] = []
+    suffix = base.suffix.lower()
+    name = base.name
+    parent = base.parent
+
+    def _add_partial_variants(p: Path) -> list[Path]:
+        """For a file path p, return [p, <parent>/_<name>] so both plain and
+        SCSS-partial forms are tried."""
+        out = [p]
+        if not p.name.startswith("_"):
+            out.append(p.parent / ("_" + p.name))
+        return out
+
+    if suffix in CSS_EXTS:
+        # already has an extension — try as-is + partial variant
+        candidates.extend(_add_partial_variants(base))
+    else:
+        # no (or foreign) suffix — try each extension + partial variant
+        stem_path = base  # Path without modifying suffix
+        for ext in (".scss", ".sass", ".less", ".css"):
+            candidates.extend(_add_partial_variants(Path(str(stem_path) + ext)))
+
+    # directory-as-module: try <base>/index.* and <base>/_index.*
+    for ext in (".scss", ".sass", ".less", ".css"):
+        candidates.append(base / f"index{ext}")
+    for ext in (".scss", ".sass"):
+        candidates.append(base / f"_index{ext}")
+
+    # dedupe preserving order
+    seen: set[str] = set()
+    out: list[Path] = []
+    for c in candidates:
+        s = str(c)
+        if s not in seen:
+            seen.add(s)
+            out.append(c)
+    return out
+
+
+# ---------------------------------------------------------------------------
 # Language registry
 # ---------------------------------------------------------------------------
 LANGUAGES: dict[str, dict] = {
@@ -1120,6 +1265,16 @@ LANGUAGES: dict[str, dict] = {
         "extract": extract_c_imports,
         "parse_manifest": parse_c_manifest,
         "resolve": "c",
+    },
+    "css": {
+        "extensions": set(CSS_EXTS),
+        "manifest_globs": [],
+        # CSS @import / @use / @forward is always treated as an in-project
+        # relative resolution; _is_relative_import special-cases this.
+        "relative_prefixes": ["./", "../", "/", ""],
+        "extract": extract_css_imports,
+        "parse_manifest": None,  # CSS family has no manifest
+        "resolve": "css",
     },
 }
 
@@ -1273,6 +1428,12 @@ class Closure:
         if lang == "php":
             # relative if looks like a filesystem path or ends with .php
             return target.startswith("./") or target.startswith("../") or target.endswith(".php")
+        if lang == "css":
+            # CSS has no manifest; any non-scheme, non-webpack-tilde target is
+            # treated as in-project. External forms are filtered inside
+            # resolve_css and will simply return [] (then _resolve_import
+            # silently skips — see the CSS branch in _resolve_import).
+            return True
         prefixes = LANGUAGES[lang]["relative_prefixes"]
         return any(target.startswith(p) for p in prefixes if p)
 
@@ -1305,6 +1466,8 @@ class Closure:
             return resolve_php(target, from_file, self.project_root, manifest_path)
         if kind == "c":
             return resolve_c(target, from_file, self.project_root, self.project_files)
+        if kind == "css":
+            return resolve_css(target, from_file, self.project_root)
         return []
 
     def _pick_existing(self, candidates: list[Path]) -> Path | None:
