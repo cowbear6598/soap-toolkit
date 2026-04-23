@@ -1663,23 +1663,14 @@ class Closure:
     # ---------- closure traversal ----------
     def compute(self, changed_rel: list[str]) -> tuple[list[str], list[str]]:
         changed_set = set(changed_rel)
-        # build reverse index up-front (requires forward scan of whole project)
         self._build_reverse_index()
         assert self._reverse_index is not None
 
         related: set[str] = set()
-        visited: set[str] = set()
-        stack: list[str] = list(changed_set)
 
-        while stack:
-            cur = stack.pop()
-            if cur in visited:
-                continue
-            visited.add(cur)
+        for cur in changed_set:
             abs_path = self.project_root / cur
-            # forward
             if cur not in self._forward_index:
-                # file might not exist in project_files (e.g., outside scan), attempt
                 try:
                     fwd = self._compute_forward(abs_path)
                 except Exception as e:
@@ -1688,19 +1679,13 @@ class Closure:
             else:
                 fwd = self._forward_index[cur]
             for dep in fwd:
-                if dep not in changed_set and dep not in related and dep != cur:
+                if dep != cur:
                     related.add(dep)
-                if dep not in visited:
-                    stack.append(dep)
-            # reverse
             rev_deps = self._reverse_index.get(cur, set())
             for importer in rev_deps:
-                if importer not in changed_set and importer not in related and importer != cur:
+                if importer != cur:
                     related.add(importer)
-                if importer not in visited:
-                    stack.append(importer)
 
-        # related must not include changed
         related -= changed_set
         return sorted(changed_set), sorted(related)
 
