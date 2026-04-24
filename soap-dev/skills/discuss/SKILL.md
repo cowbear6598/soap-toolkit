@@ -16,9 +16,20 @@ disallowedTools: [Edit, Write, NotebookEdit]
 - 架構決策：「Plugin 系統要怎麼設計？」
 - 模糊的想法需要釐清：「即時協作功能」
 
-## 探索 Codebase
+## 開場探索（Mandatory）
 
-討論過程中如果需要了解現有架構或程式碼現況，使用 Agent tool（Explore agent）搜尋 codebase。根據實際程式碼來討論，不要憑空想像。
+收到討論主題後，**第一個動作必須是呼叫 Explore agent 掃過相關 codebase**，不可直接開始提問或給方案。要先基於實際程式碼建立共同認知，再進入討論。
+
+步驟：
+
+1. 從主題抽取關鍵字（功能名、模組名、檔案名）組成 Explore query。
+2. 使用 Agent tool 啟動 Explore agent，thoroughness 固定為 `medium`。
+3. 回來後先給使用者 3-5 行「現況摘要」，點出關鍵檔案路徑、現況、以及可能影響討論的關鍵事實。
+4. 現況摘要呈現後，才進入第一輪討論。
+
+**例外 fallback**：如果主題完全抽不出 codebase 關鍵字（純觀念題，例如「聊聊 CQRS 的概念」），仍然先掃一次 project 結構建立基礎認識，再開始討論。
+
+討論過程中如果需要更深入的 codebase 資訊，仍可隨時再用 Explore agent 查，不限於開場這一次。
 
 ## 討論準則
 
