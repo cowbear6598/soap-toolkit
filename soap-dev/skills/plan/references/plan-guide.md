@@ -19,6 +19,25 @@
 - 如需欄位描述請詳細填寫
 - 不要用程式碼描述工作內容
 
+## Fallback / Defensive Code 防護規則
+
+使用者的工作流是「只看 plan 的情境章節，不細看 todo」。Fallback / defensive code 若藏在 todo 細節裡，會躲過審查，最後變成程式中一堆沒必要的防衛分支與配套的邊界測試。
+
+**規則**：產出計畫書時，只要 todo 出現以下任何一種情況，**必須先用 AskUserQuestion 與使用者逐一對齊每一項的必要性，對齊通過後才能寫入 todo**：
+
+- try-catch 包覆（例外：第三方服務呼叫、I/O、網路請求這類「真實會失敗的邊界」可直接寫入）
+- null / undefined / 空值的 fallback（例如 `value ?? default`、`if (!x) return [...]`）
+- 預設值兜底（找不到資料時回傳預設值）
+- 重試邏輯 retry / backoff
+- TypeScript 型別系統已保證的防衛（例如已宣告為 `string` 還寫 `if (typeof x !== 'string')`）
+
+**對齊問題格式建議**：每一個 fallback 都要列出
+1. 該 fallback 是什麼（出現在哪個情境 / 哪個函式）
+2. 不加會發生什麼後果
+3. 建議是否需要（並說明理由）
+
+讓使用者明確點頭後才能進入 todo，否則寧可不寫，事後讓錯誤自然浮現。
+
 ## Phase 分組規則
 
 - 計畫書必須用 Phase 來分組（`### Phase 1`、`### Phase 2`...）

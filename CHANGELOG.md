@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.3.0] - 2026-04-28
+
+### 新增
+- plan skill 新增「Fallback / Defensive Code 防護規則」，計畫書產出時若 todo 出現 try-catch、null fallback、預設值兜底、retry 或 TS 型別已保證的防衛，必須先用 AskUserQuestion 與使用者對齊每一個的必要性，對齊通過才能寫入 todo（第三方服務、I/O、網路請求等真實邊界例外可直接寫入）
+- review skill code-quality 面向新增「Fallback 必要性」檢查項，列出程式碼中所有 fallback / defensive code 並標註「必要 / 可移除 / 需確認」，於 review 結果中獨立成一個區塊輸出
+
 ## [1.0.17] - 2026-04-13
 
 ### 新增
