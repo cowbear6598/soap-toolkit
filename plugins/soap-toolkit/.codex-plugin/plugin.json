@@ -1,0 +1,33 @@
+{
+  "name": "soap-toolkit",
+  "version": "0.1.0+codex.20260731062415",
+  "description": "Focused engineering workflows for Codex.",
+  "author": {
+    "name": "cowbear6598",
+    "url": "https://github.com/cowbear6598"
+  },
+  "keywords": [
+    "coding",
+    "planning",
+    "engineering-workflow"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Soap Toolkit",
+    "shortDescription": "Inspect, discuss, and plan code changes.",
+    "longDescription": "Soap Toolkit provides concise engineering workflows that inspect the current implementation, resolve uncertainty with the user, and preserve focused plans.",
+    "developerName": "cowbear6598",
+    "category": "Coding",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Inspect the current implementation and plan this change.",
+      "Discuss the uncertain parts before creating a plan.",
+      "Turn this feature request into a focused plan."
+    ],
+    "brandColor": "#111111"
+  }
+}
