@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review"
+  short_description: "Review current changes for high-confidence defects"
+  default_prompt: "Use $review to review the current changes for correctness and regression risks."

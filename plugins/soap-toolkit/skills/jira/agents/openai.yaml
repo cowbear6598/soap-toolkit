@@ -1,0 +1,4 @@
+interface:
+  display_name: "Jira"
+  short_description: "Get, comment, transition, and create Jira subtasks"
+  default_prompt: "Use $jira to get or update this Jira issue with one focused operation."

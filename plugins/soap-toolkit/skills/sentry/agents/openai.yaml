@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sentry"
+  short_description: "Set up Sentry and retrieve issue evidence by shortId"
+  default_prompt: "Use $sentry to retrieve this Sentry issue and its latest event details."

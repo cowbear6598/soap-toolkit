@@ -1,6 +1,6 @@
 {
   "name": "soap-toolkit",
-  "version": "0.1.0+codex.20260731062415",
+  "version": "0.1.0+codex.20260731091936",
   "description": "Focused engineering workflows for Codex.",
   "author": {
     "name": "cowbear6598",
@@ -9,13 +9,17 @@
   "keywords": [
     "coding",
     "planning",
+    "review",
+    "simplification",
+    "jira",
+    "sentry",
     "engineering-workflow"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Soap Toolkit",
-    "shortDescription": "Inspect, discuss, and plan code changes.",
-    "longDescription": "Soap Toolkit provides concise engineering workflows that inspect the current implementation, resolve uncertainty with the user, and preserve focused plans.",
+    "shortDescription": "Focused coding workflows with Jira and Sentry tools.",
+    "longDescription": "Soap Toolkit provides concise workflows to plan changes, diagnose bugs, review diffs, simplify code, operate on Jira issues, and retrieve Sentry evidence.",
     "developerName": "cowbear6598",
     "category": "Coding",
     "capabilities": [
@@ -25,8 +29,11 @@
     ],
     "defaultPrompt": [
       "Inspect the current implementation and plan this change.",
-      "Discuss the uncertain parts before creating a plan.",
-      "Turn this feature request into a focused plan."
+      "Investigate this bug and prove the root cause.",
+      "Review the current changes for high-confidence defects.",
+      "Simplify the current changes without altering behavior.",
+      "Get, comment, transition, or create a subtask for this Jira issue.",
+      "Retrieve this Sentry issue and its latest event details."
     ],
     "brandColor": "#111111"
   }

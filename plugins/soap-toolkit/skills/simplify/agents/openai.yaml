@@ -1,0 +1,4 @@
+interface:
+  display_name: "Simplify"
+  short_description: "Simplify current changes without altering behavior"
+  default_prompt: "Use $simplify to simplify the current changes while preserving behavior."
