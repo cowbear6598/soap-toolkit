@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Edit"
+  short_description: "Create video clips and animated GIFs"
+  default_prompt: "Use $video-edit to create clips or GIFs from this video."

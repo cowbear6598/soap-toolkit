@@ -1,0 +1,4 @@
+interface:
+  display_name: "Slack"
+  short_description: "Publish messages and manage Slack files"
+  default_prompt: "Use $slack to publish or manage this content in Slack."

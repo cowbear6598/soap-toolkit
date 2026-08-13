@@ -1,0 +1,4 @@
+interface:
+  display_name: "YouTube"
+  short_description: "Find and download YouTube content"
+  default_prompt: "Use $youtube to find or download YouTube videos and subtitles."

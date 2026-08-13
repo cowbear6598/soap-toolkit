@@ -31,7 +31,7 @@ def write_config(path: Path, data: dict[str, str]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Configure read-only Jira Cloud access")
+    parser = argparse.ArgumentParser(description="Configure Jira Cloud access")
     parser.add_argument("--url", help="Jira Cloud URL, for example https://example.atlassian.net")
     parser.add_argument("--email", help="Jira account email")
     args = parser.parse_args()

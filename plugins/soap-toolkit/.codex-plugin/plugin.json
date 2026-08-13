@@ -1,7 +1,7 @@
 {
   "name": "soap-toolkit",
-  "version": "0.1.0+codex.20260731091936",
-  "description": "Focused engineering workflows for Codex.",
+  "version": "1.0.0+codex.20260813125542",
+  "description": "Focused engineering, media processing, social sourcing, and Slack workflows for Codex.",
   "author": {
     "name": "cowbear6598",
     "url": "https://github.com/cowbear6598"
@@ -13,13 +13,18 @@
     "simplification",
     "jira",
     "sentry",
-    "engineering-workflow"
+    "engineering-workflow",
+    "youtube",
+    "threads",
+    "video",
+    "slack",
+    "media-workflow"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Soap Toolkit",
-    "shortDescription": "Focused coding workflows with Jira and Sentry tools.",
-    "longDescription": "Soap Toolkit provides concise workflows to plan changes, diagnose bugs, review diffs, simplify code, operate on Jira issues, and retrieve Sentry evidence.",
+    "shortDescription": "Engineering, media, Jira, Sentry, and Slack tools.",
+    "longDescription": "Soap Toolkit provides concise capabilities for planning and reviewing code, diagnosing bugs, simplifying changes, operating on Jira and Sentry, sourcing social content, processing video, and publishing to Slack.",
     "developerName": "cowbear6598",
     "category": "Coding",
     "capabilities": [
@@ -29,11 +34,8 @@
     ],
     "defaultPrompt": [
       "Inspect the current implementation and plan this change.",
-      "Investigate this bug and prove the root cause.",
-      "Review the current changes for high-confidence defects.",
-      "Simplify the current changes without altering behavior.",
-      "Get, comment, transition, or create a subtask for this Jira issue.",
-      "Retrieve this Sentry issue and its latest event details."
+      "Investigate or review this engineering change.",
+      "Find, process, and publish this media content."
     ],
     "brandColor": "#111111"
   }

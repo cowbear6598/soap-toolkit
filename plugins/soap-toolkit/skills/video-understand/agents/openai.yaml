@@ -1,0 +1,4 @@
+interface:
+  display_name: "Video Understand"
+  short_description: "Transcribe and summarize video or audio"
+  default_prompt: "Use $video-understand to transcribe or summarize this media file."

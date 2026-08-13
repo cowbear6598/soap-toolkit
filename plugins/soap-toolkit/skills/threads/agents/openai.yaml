@@ -1,0 +1,4 @@
+interface:
+  display_name: "Threads"
+  short_description: "Fetch and analyze public Threads posts"
+  default_prompt: "Use $threads to fetch and analyze public posts from a Threads account."

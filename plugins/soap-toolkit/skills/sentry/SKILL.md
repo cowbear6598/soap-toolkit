@@ -5,40 +5,22 @@ description: Set up read-only Sentry credentials and retrieve an issue plus its 
 
 # Sentry
 
-Retrieve one Sentry issue and its latest event by shortId. Do not search broadly, resolve, assign, comment on, or otherwise modify issues.
-
-## Get an issue
-
-Run:
+Retrieve one issue and its latest event without searching broadly or modifying Sentry:
 
 ```bash
 python3 <skill-dir>/scripts/get.py PROJECT-123
 ```
 
-Replace `<skill-dir>` with this skill's absolute directory. Use the returned issue metadata, exception mechanism, stack frames, source context, request method and URL, environment, release, transaction, and tags as investigation evidence.
+Use returned issue metadata, exceptions, stack frames, source context, request details, environment, release, transaction, and tags as evidence. Never inspect or expose credentials or a full event user object.
 
-Do not inspect, print, or echo the credential file. Do not expose a Sentry event's full user object.
+## Setup
 
-## Set up access
-
-When setup is requested or `get.py` reports that configuration is missing, tell the user to run this in their own terminal:
+When requested or configuration is missing, ask the user to run:
 
 ```bash
 python3 <skill-dir>/scripts/setup.py
 ```
 
-The script prompts for an auth token and organization slug. It hides the token input and accepts `--base-url` for regional or self-hosted Sentry installations. It writes:
+The script securely prompts for an auth token and organization slug, accepts `--base-url` for regional or self-hosted installations, and writes `~/.config/soap-toolkit/sentry.json` with owner-only permissions. It does not use token environment variables or require a restart.
 
-```text
-~/.config/soap-toolkit/sentry.json
-```
-
-It applies owner-only permissions and does not modify shell profiles. No Codex restart is required; retry `get.py` after setup.
-
-Use a token with `event:read` access. See:
-
-```text
-https://docs.sentry.io/api/auth/
-```
-
-Never ask the user to paste a token into the conversation.
+Use a token with `event:read` access; see `https://docs.sentry.io/api/auth/`. Never ask the user to paste it into the conversation.
