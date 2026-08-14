@@ -44,7 +44,7 @@ def get_subtask_types(
             path,
             {"maxResults": "100", "startAt": str(start_at)},
         )
-        page = result.get("values") if isinstance(result, dict) else None
+        page = result.get("issueTypes", result.get("values")) if isinstance(result, dict) else None
         if not isinstance(page, list):
             raise JiraError("Jira returned an unexpected issue type response.")
         values.extend(page)
