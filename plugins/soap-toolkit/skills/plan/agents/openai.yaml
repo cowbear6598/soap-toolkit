@@ -1,4 +1,7 @@
 interface:
   display_name: "Plan"
-  short_description: "Inspect, discuss, and create a minimal implementation plan"
-  default_prompt: "Use $plan to inspect the current implementation and create a focused plan."
+  short_description: "Create a focused repository-grounded implementation plan"
+  default_prompt: "Use $plan to inspect the current implementation and write a focused plan."
+
+policy:
+  allow_implicit_invocation: false
