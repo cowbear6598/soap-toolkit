@@ -1,6 +1,6 @@
 ---
 name: plan
-description: Create a minimal, repository-grounded implementation plan when explicitly invoked. Do not use for general discussion or implementation.
+description: Create a minimal, repository-grounded implementation plan by inspecting the code and clarifying unresolved requirements when explicitly invoked. Do not use for implementation.
 ---
 
 # Plan
@@ -61,11 +61,15 @@ When the user supplies a reference image and viewport for frontend verification:
 
 Do not ask for a reference image or viewport merely because a task touches the frontend.
 
-## Resolve only blocking uncertainty
+## Clarify requirements
 
-Discussion is not a required phase. When the request and repository provide enough information, finish the plan without asking questions.
+Investigate the repository before deciding whether the request is clear. Resolve technical facts from the code when possible instead of asking the user to supply information the repository already contains.
 
-Ask one focused question only when an unresolved issue would materially change the scope or user-visible outcome, or would prevent an accurate plan. Explain two or three concrete options and recommend one when alternatives exist. Update the YAML with confirmed facts before pausing; do not store unanswered questions or conversation history in it.
+After inspection, surface every unresolved requirement, ambiguity, conflict, tradeoff, compatibility concern, constraint, or verification gap that could affect the plan. Do not silently choose among plausible interpretations or record an uncertain assumption as fact.
+
+Ask one focused question at a time. When alternatives exist, explain two or three concrete options, their relevant tradeoffs, and a recommendation. Update the YAML with confirmed facts before pausing; do not store unanswered questions or conversation history in it.
+
+Proceed to handoff only when the feature purpose, expected behavior, scope, constraints, compatibility, affected surfaces, and verification are clear.
 
 ## Validate and hand off
 
