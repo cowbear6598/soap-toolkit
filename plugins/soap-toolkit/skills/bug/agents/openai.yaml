@@ -2,3 +2,6 @@ interface:
   display_name: "Bug"
   short_description: "Find a root cause and prove it with evidence"
   default_prompt: "Use $bug to investigate this issue and identify the root cause with evidence."
+
+policy:
+  allow_implicit_invocation: false
